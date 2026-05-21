@@ -1,0 +1,74 @@
+import Link from 'next/link'
+
+/**
+ * Marketing / template showcase page.
+ * Visitors landing on `/` see the pitch + a "View live template" link.
+ * Real couples land on `/<slug>` instead.
+ */
+export default function HomePage() {
+  return (
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'grid',
+        placeItems: 'center',
+        background: 'linear-gradient(135deg, #F5EFE3 0%, #E8DCC0 100%)',
+        padding: '40px',
+        fontFamily: 'var(--font-body, system-ui)',
+      }}
+    >
+      <div style={{ maxWidth: 640, textAlign: 'center' }}>
+        <p
+          style={{
+            textTransform: 'uppercase',
+            letterSpacing: '0.36em',
+            fontSize: 12,
+            color: '#E8553E',
+            marginBottom: 12,
+          }}
+        >
+          Cinematic wedding invitations
+        </p>
+        <h1
+          style={{
+            fontFamily: 'var(--font-display, serif)',
+            fontStyle: 'italic',
+            fontWeight: 500,
+            fontSize: 'clamp(48px, 7vw, 88px)',
+            lineHeight: 1,
+            margin: '0 0 24px',
+            color: '#2A2118',
+          }}
+        >
+          Your love story, beautifully told.
+        </h1>
+        <p style={{ fontSize: 17, lineHeight: 1.7, color: '#5C4A3A', marginBottom: 32 }}>
+          A premium digital wedding invitation, designed cinematic from first scroll to RSVP.
+          Pick a template, share your dates, send the link.
+        </p>
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link
+            href="/rizky-amara"
+            style={{
+              padding: '16px 32px',
+              borderRadius: 999,
+              background: '#2A2118',
+              color: '#F5EFE3',
+              fontSize: 14,
+              fontWeight: 500,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              textDecoration: 'none',
+            }}
+          >
+            View live demo →
+          </Link>
+        </div>
+        <p style={{ marginTop: 40, fontSize: 13, color: 'rgba(42,33,24,0.55)' }}>
+          Try the demo invitation at <code>/rizky-amara</code> · admin at{' '}
+          <code>/rizky-amara/dashboard</code>
+        </p>
+      </div>
+    </main>
+  )
+}

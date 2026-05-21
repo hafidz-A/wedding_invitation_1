@@ -1,0 +1,212 @@
+'use client'
+
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import EditorRoot from '@/editor/EditorRoot'
+import RsvpsTab, { type RsvpRow } from './RsvpsTab'
+import GiftsTab, { type GiftRow } from './GiftsTab'
+
+/**
+ * Force re-login on a hard refresh (F5 / Ctrl-R).
+ *
+ * Uses Performance Navigation Timing to distinguish:
+ *   • 'navigate'      — fresh navigation (incl. server redirect after login) → KEEP session
+ *   • 'reload'        — user pressed refresh → LOG OUT
+ *   • 'back_forward'  — browser history → keep session
+ *   • 'prerender'     — keep session
+ *
+ * This avoids the trap of a sessionStorage sentinel persisting across
+ * unrelated logins in the same tab, which used to immediately log the user
+ * out the moment they signed back in.
+ */
+function useRefreshLogoutGuard(slug: string) {
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('performance' in window)) return
+    const entries = performance.getEntriesByType(
+      'navigation',
+    ) as PerformanceNavigationTiming[]
+    const navType = entries[0]?.type
+    if (navType !== 'reload') return
+
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug }),
+    }).finally(() => {
+      window.location.replace(`/${slug}/dashboard`)
+    })
+  }, [slug])
+}
+
+/**
+ * Stub dashboard — shows the invitation status + counts and links to the
+ * public view. The full block-based editor will replace this in the next
+ * sprint (drag-reorder sections, image/GIF upload, live preview).
+ *
+ * For now it proves that auth works and the data flows from Supabase.
+ */
+export default function DashboardClient({
+  slug,
+  invitation,
+  rsvps,
+  gifts,
+}: {
+  slug: string
+  invitation: any
+  rsvps: RsvpRow[]
+  gifts: GiftRow[]
+}) {
+  useRefreshLogoutGuard(slug)
+  const [tab, setTab] = useState<'overview' | 'rsvps' | 'gifts' | 'editor'>('overview')
+
+  return (
+    <main
+      style={{
+        minHeight: '100vh',
+        background: '#F5EFE3',
+        fontFamily: 'var(--font-body, system-ui)',
+        color: '#2A2118',
+      }}
+    >
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '20px 32px',
+          borderBottom: '1px solid rgba(42,33,24,0.08)',
+          background: 'rgba(255,255,255,0.7)',
+          backdropFilter: 'blur(10px)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+        }}
+      >
+        <div>
+          <p style={{ margin: 0, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.28em', color: '#E8553E' }}>
+            Dashboard
+          </p>
+          <h1
+            style={{
+              margin: 0,
+              fontFamily: 'var(--font-display, serif)',
+              fontStyle: 'italic',
+              fontSize: 28,
+            }}
+          >
+            {slug}
+          </h1>
+        </div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <span
+            style={{
+              padding: '6px 12px',
+              borderRadius: 999,
+              fontSize: 11,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              background: invitation.is_published ? '#2D8C4E' : 'rgba(42,33,24,0.2)',
+              color: invitation.is_published ? '#fff' : '#2A2118',
+            }}
+          >
+            {invitation.is_published ? 'Published' : 'Draft'}
+          </span>
+          <Link
+            href={`/${slug}`}
+            target="_blank"
+            style={{
+              padding: '8px 18px',
+              borderRadius: 999,
+              background: '#2A2118',
+              color: '#F5EFE3',
+              fontSize: 12,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              textDecoration: 'none',
+            }}
+          >
+            View live →
+          </Link>
+        </div>
+      </header>
+
+      <nav style={{ display: 'flex', gap: 4, padding: '16px 32px 0', borderBottom: '1px solid rgba(42,33,24,0.06)' }}>
+        {(['overview', 'rsvps', 'gifts', 'editor'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              padding: '12px 18px',
+              border: 'none',
+              background: 'transparent',
+              color: tab === t ? '#2A2118' : 'rgba(42,33,24,0.55)',
+              fontSize: 13,
+              fontWeight: tab === t ? 600 : 400,
+              letterSpacing: '0.04em',
+              textTransform: 'capitalize',
+              borderBottom: tab === t ? '2px solid #E8553E' : '2px solid transparent',
+              cursor: 'pointer',
+              transition: 'color 0.2s ease',
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </nav>
+
+      <section style={{ padding: '32px' }}>
+        {tab === 'overview' && (
+          <div style={cardStyle}>
+            <h2 style={h2Style}>Overview</h2>
+            <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 16 }}>
+              <Stat label="Plan" value={invitation.plan || 'free'} />
+              <Stat label="Template" value={invitation.template_id || 'classic'} />
+              <Stat label="Custom domain" value={invitation.custom_domain || '—'} />
+              <Stat label="Created" value={new Date(invitation.created_at).toLocaleDateString()} />
+            </dl>
+          </div>
+        )}
+
+        {tab === 'editor' && (
+          <EditorRoot
+            slug={slug}
+            initialConfig={invitation.config ?? { sections: [] }}
+            initialIsPublished={!!invitation.is_published}
+          />
+        )}
+
+        {tab === 'rsvps' && <RsvpsTab rsvps={rsvps} />}
+
+        {tab === 'gifts' && <GiftsTab gifts={gifts} />}
+      </section>
+    </main>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p style={{ margin: 0, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'rgba(42,33,24,0.6)' }}>
+        {label}
+      </p>
+      <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-display, serif)', fontStyle: 'italic', fontSize: 24 }}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
+const cardStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.85)',
+  borderRadius: 18,
+  padding: 28,
+  marginBottom: 20,
+  boxShadow: '0 12px 36px rgba(42,33,24,0.06)',
+}
+
+const h2Style: React.CSSProperties = {
+  fontFamily: 'var(--font-display, serif)',
+  fontStyle: 'italic',
+  fontSize: 28,
+  margin: '0 0 16px',
+}

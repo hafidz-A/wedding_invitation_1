@@ -1,0 +1,294 @@
+'use client'
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  type ReactNode,
+} from 'react'
+import { deepEqual } from './lib/deepEqual'
+
+export interface SectionEntry {
+  id: string
+  type: string
+  enabled?: boolean
+  theme?: string
+  navLabel?: string
+  background?: { type: string; value: string }
+  layout?: string
+  props?: Record<string, unknown>
+  blocks?: unknown[]
+  decorativeLayers?: unknown[]
+}
+
+export interface PageConfig {
+  meta?: { title?: string; description?: string }
+  sections: SectionEntry[]
+}
+
+interface State {
+  config: PageConfig
+  initialConfig: PageConfig
+  selectedSectionId: string | null
+  isSaving: boolean
+  saveError: string | null
+  lastSavedAt: string | null
+}
+
+type Action =
+  | { type: 'UPDATE_FIELD';        sectionId: string; key: string; value: unknown }
+  | { type: 'UPDATE_ARRAY_ITEM';   sectionId: string; key: string; index: number; subKey: string; value: unknown }
+  | { type: 'ADD_ARRAY_ITEM';      sectionId: string; key: string; item: unknown }
+  | { type: 'REMOVE_ARRAY_ITEM';   sectionId: string; key: string; index: number }
+  | { type: 'REORDER_ARRAY_ITEMS'; sectionId: string; key: string; from: number; to: number }
+  | { type: 'REORDER_SECTIONS';    from: number; to: number }
+  | { type: 'TOGGLE_SECTION_ENABLED'; sectionId: string }
+  | { type: 'ADD_SECTION';            sectionType: string; label: string; defaults?: Record<string, unknown> }
+  | { type: 'REMOVE_SECTION';         sectionId: string }
+  | { type: 'SELECT_SECTION';         sectionId: string }
+  | { type: 'SAVE_START' }
+  | { type: 'SAVE_SUCCESS';           savedAt: string }
+  | { type: 'SAVE_ERROR';             message: string }
+
+function moveItem<T>(arr: T[], from: number, to: number): T[] {
+  const next = arr.slice()
+  const [item] = next.splice(from, 1)
+  next.splice(to, 0, item)
+  return next
+}
+
+function patchSection(
+  config: PageConfig,
+  sectionId: string,
+  patch: (s: SectionEntry) => SectionEntry,
+): PageConfig {
+  return {
+    ...config,
+    sections: config.sections.map((s) => (s.id === sectionId ? patch(s) : s)),
+  }
+}
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'UPDATE_FIELD':
+      return {
+        ...state,
+        config: patchSection(state.config, action.sectionId, (s) => ({
+          ...s,
+          props: { ...(s.props || {}), [action.key]: action.value },
+        })),
+      }
+
+    case 'UPDATE_ARRAY_ITEM':
+      return {
+        ...state,
+        config: patchSection(state.config, action.sectionId, (s) => {
+          const arr = ((s.props?.[action.key] as unknown[]) || []).slice()
+          const item = { ...(arr[action.index] as Record<string, unknown>) }
+          item[action.subKey] = action.value
+          arr[action.index] = item
+          return { ...s, props: { ...(s.props || {}), [action.key]: arr } }
+        }),
+      }
+
+    case 'ADD_ARRAY_ITEM':
+      return {
+        ...state,
+        config: patchSection(state.config, action.sectionId, (s) => {
+          const arr = ((s.props?.[action.key] as unknown[]) || []).slice()
+          arr.push(action.item)
+          return { ...s, props: { ...(s.props || {}), [action.key]: arr } }
+        }),
+      }
+
+    case 'REMOVE_ARRAY_ITEM':
+      return {
+        ...state,
+        config: patchSection(state.config, action.sectionId, (s) => {
+          const arr = ((s.props?.[action.key] as unknown[]) || []).slice()
+          arr.splice(action.index, 1)
+          return { ...s, props: { ...(s.props || {}), [action.key]: arr } }
+        }),
+      }
+
+    case 'REORDER_ARRAY_ITEMS':
+      return {
+        ...state,
+        config: patchSection(state.config, action.sectionId, (s) => {
+          const arr = (s.props?.[action.key] as unknown[]) || []
+          return {
+            ...s,
+            props: { ...(s.props || {}), [action.key]: moveItem(arr, action.from, action.to) },
+          }
+        }),
+      }
+
+    case 'REORDER_SECTIONS':
+      return {
+        ...state,
+        config: { ...state.config, sections: moveItem(state.config.sections, action.from, action.to) },
+      }
+
+    case 'TOGGLE_SECTION_ENABLED':
+      return {
+        ...state,
+        config: patchSection(state.config, action.sectionId, (s) => ({
+          ...s,
+          enabled: !s.enabled,
+        })),
+      }
+
+    case 'ADD_SECTION': {
+      const id = `${action.sectionType}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      const newSection: SectionEntry = {
+        id,
+        type: action.sectionType,
+        enabled: true,
+        props: { ...(action.defaults || {}) },
+      }
+      return {
+        ...state,
+        config: { ...state.config, sections: [...state.config.sections, newSection] },
+        selectedSectionId: id,
+      }
+    }
+
+    case 'REMOVE_SECTION': {
+      const sections = state.config.sections.filter((s) => s.id !== action.sectionId)
+      const selectedSectionId =
+        state.selectedSectionId === action.sectionId
+          ? sections[0]?.id ?? null
+          : state.selectedSectionId
+      return { ...state, config: { ...state.config, sections }, selectedSectionId }
+    }
+
+    case 'SELECT_SECTION':
+      return { ...state, selectedSectionId: action.sectionId }
+
+    case 'SAVE_START':
+      return { ...state, isSaving: true, saveError: null }
+
+    case 'SAVE_SUCCESS':
+      return {
+        ...state,
+        isSaving: false,
+        saveError: null,
+        initialConfig: state.config,
+        lastSavedAt: action.savedAt,
+      }
+
+    case 'SAVE_ERROR':
+      return { ...state, isSaving: false, saveError: action.message }
+
+    default:
+      return state
+  }
+}
+
+interface EditorContextValue extends State {
+  isDirty: boolean
+  selectedSection: SectionEntry | null
+  updateField: (sectionId: string, key: string, value: unknown) => void
+  updateArrayItem: (sectionId: string, key: string, index: number, subKey: string, value: unknown) => void
+  addArrayItem: (sectionId: string, key: string, item: unknown) => void
+  removeArrayItem: (sectionId: string, key: string, index: number) => void
+  reorderArrayItems: (sectionId: string, key: string, from: number, to: number) => void
+  reorderSections: (from: number, to: number) => void
+  toggleSectionEnabled: (sectionId: string) => void
+  addSection: (sectionType: string, label: string, defaults?: Record<string, unknown>) => void
+  removeSection: (sectionId: string) => void
+  selectSection: (sectionId: string) => void
+  save: () => Promise<void>
+}
+
+const EditorContext = createContext<EditorContextValue | null>(null)
+
+export function useEditor(): EditorContextValue {
+  const ctx = useContext(EditorContext)
+  if (!ctx) throw new Error('useEditor must be used inside <EditorProvider>')
+  return ctx
+}
+
+interface ProviderProps {
+  slug: string
+  initialConfig: PageConfig
+  children: ReactNode
+}
+
+export function EditorProvider({ slug, initialConfig, children }: ProviderProps) {
+  const [state, dispatch] = useReducer(reducer, {
+    config: initialConfig,
+    initialConfig,
+    selectedSectionId: initialConfig.sections[0]?.id ?? null,
+    isSaving: false,
+    saveError: null,
+    lastSavedAt: null,
+  })
+
+  const isDirty = useMemo(() => !deepEqual(state.config, state.initialConfig), [state.config, state.initialConfig])
+
+  const selectedSection = useMemo(
+    () => state.config.sections.find((s) => s.id === state.selectedSectionId) ?? null,
+    [state.config.sections, state.selectedSectionId],
+  )
+
+  // Beforeunload guard while dirty.
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
+
+  const save = useCallback(async () => {
+    dispatch({ type: 'SAVE_START' })
+    try {
+      const res = await fetch(`/api/invitation/${slug}/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: state.config }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        dispatch({ type: 'SAVE_ERROR', message: err.error || `HTTP ${res.status}` })
+        return
+      }
+      const data = await res.json()
+      dispatch({ type: 'SAVE_SUCCESS', savedAt: data.savedAt || new Date().toISOString() })
+    } catch (e: any) {
+      dispatch({ type: 'SAVE_ERROR', message: e?.message || 'Network error' })
+    }
+  }, [slug, state.config])
+
+  const value: EditorContextValue = {
+    ...state,
+    isDirty,
+    selectedSection,
+    updateField: (sectionId, key, value) =>
+      dispatch({ type: 'UPDATE_FIELD', sectionId, key, value }),
+    updateArrayItem: (sectionId, key, index, subKey, value) =>
+      dispatch({ type: 'UPDATE_ARRAY_ITEM', sectionId, key, index, subKey, value }),
+    addArrayItem: (sectionId, key, item) =>
+      dispatch({ type: 'ADD_ARRAY_ITEM', sectionId, key, item }),
+    removeArrayItem: (sectionId, key, index) =>
+      dispatch({ type: 'REMOVE_ARRAY_ITEM', sectionId, key, index }),
+    reorderArrayItems: (sectionId, key, from, to) =>
+      dispatch({ type: 'REORDER_ARRAY_ITEMS', sectionId, key, from, to }),
+    reorderSections: (from, to) => dispatch({ type: 'REORDER_SECTIONS', from, to }),
+    toggleSectionEnabled: (sectionId) =>
+      dispatch({ type: 'TOGGLE_SECTION_ENABLED', sectionId }),
+    addSection: (sectionType, label, defaults) =>
+      dispatch({ type: 'ADD_SECTION', sectionType, label, defaults }),
+    removeSection: (sectionId) => dispatch({ type: 'REMOVE_SECTION', sectionId }),
+    selectSection: (sectionId) => dispatch({ type: 'SELECT_SECTION', sectionId }),
+    save,
+  }
+
+  return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>
+}

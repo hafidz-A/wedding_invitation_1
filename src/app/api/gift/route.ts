@@ -1,0 +1,68 @@
+import { NextResponse } from 'next/server'
+import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+
+/**
+ * POST /api/gift
+ * Body: { slug, guest_name, account_used, amount?, currency?, message? }
+ *
+ * Mirrors /api/rsvp. Inserts into gift_confirmations on behalf of the guest.
+ */
+export async function POST(req: Request) {
+  let body: any
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const { slug, guest_name, account_used, amount, currency, message } = body || {}
+
+  if (!slug || !guest_name || !account_used) {
+    return NextResponse.json(
+      { error: 'Missing required fields: slug, guest_name, account_used' },
+      { status: 400 },
+    )
+  }
+
+  const supabase = createSupabaseAdminClient()
+
+  const { data: invitation, error: invErr } = await supabase
+    .from('invitations')
+    .select('id, is_published')
+    .eq('slug', slug)
+    .maybeSingle()
+
+  if (invErr || !invitation) {
+    return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
+  }
+  if (!invitation.is_published) {
+    return NextResponse.json({ error: 'Invitation not published' }, { status: 403 })
+  }
+
+  // Normalize amount — strip thousand separators, allow empty
+  let normalizedAmount: number | null = null
+  if (amount !== undefined && amount !== null && String(amount).trim() !== '') {
+    const cleaned = String(amount).replace(/[^\d.]/g, '')
+    const parsed = Number(cleaned)
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
+    }
+    normalizedAmount = parsed
+  }
+
+  const { error } = await supabase.from('gift_confirmations').insert({
+    invitation_id: invitation.id,
+    guest_name: String(guest_name).slice(0, 120),
+    account_used: String(account_used).slice(0, 120),
+    amount: normalizedAmount,
+    currency: (currency ? String(currency) : 'IDR').slice(0, 8),
+    message: message ? String(message).slice(0, 500) : null,
+  })
+
+  if (error) {
+    console.error('[gift insert]', error)
+    return NextResponse.json({ error: 'Failed to record gift confirmation' }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
+}

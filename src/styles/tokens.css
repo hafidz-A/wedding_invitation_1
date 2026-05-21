@@ -1,0 +1,50 @@
+:root {
+  /* ---------- Brand palette ---------- */
+  --color-coral: #E8553E;
+  --color-coral-soft: #F4A38F;
+  --color-gold: #F5C842;
+  --color-gold-soft: #FBE3A6;
+  --color-emerald: #2D8C4E;
+  --color-emerald-soft: #8FCBA1;
+  --color-purple: #6B35A8;
+  --color-purple-soft: #BFA5DC;
+  --color-sky: #3D9BC1;
+  --color-sky-soft: #A8D5E3;
+
+  /* ---------- Surface / neutral ---------- */
+  --color-cream: #FDF6EC;
+  --color-cream-deep: #F7EBD7;
+  --color-greige: #d6d1be;
+  --color-charcoal: #2A2118;
+  --color-charcoal-light: #5C4A3A;
+  --color-paper: #ffffff;
+  --color-ink: #1a1a1a;
+
+  /* ---------- Typography ---------- */
+  --font-display: 'Cormorant Garamond', 'Times New Roman', serif;
+  --font-body: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-script: 'Kaushan Script', 'Brush Script MT', cursive;
+  --font-serif-soft: 'Kameron', 'Cormorant Garamond', serif;
+
+  /* ---------- Spacing ---------- */
+  --spacing-section: 120px;
+  --spacing-section-mobile: 72px;
+  --container-max: 1240px;
+  --container-pad: clamp(20px, 4vw, 48px);
+
+  /* ---------- Radii ---------- */
+  --border-radius-card: 16px;
+  --border-radius-pill: 999px;
+  --border-radius-sm: 8px;
+
+  /* ---------- Shadows ---------- */
+  --shadow-card: 0 8px 32px rgba(42, 33, 24, 0.10);
+  --shadow-card-hover: 0 16px 48px rgba(42, 33, 24, 0.16);
+  --shadow-soft: 0 4px 14px rgba(42, 33, 24, 0.06);
+  --shadow-polaroid: 5px 5px 16px rgba(0, 0, 0, 0.28);
+
+  /* ---------- Motion ---------- */
+  --transition-default: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: all 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
