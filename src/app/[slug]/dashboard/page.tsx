@@ -34,11 +34,11 @@ export default async function DashboardPage({ params }: PageProps) {
   }
 
   const supabase = createSupabaseAdminClient()
-  const { data: invitation } = await supabase
+  const { data: invitation } = (await supabase
     .from('invitations')
     .select('*')
     .eq('slug', slug)
-    .maybeSingle()
+    .maybeSingle()) as { data: any | null }
 
   if (!invitation) {
     return <NoSuchInvitation slug={slug} />
@@ -102,11 +102,11 @@ async function loginAction(formData: FormData) {
   }
 
   const supabase = createSupabaseAdminClient()
-  const { data } = await supabase
+  const { data } = (await supabase
     .from('invitations')
     .select('password_hash')
     .eq('slug', slug)
-    .maybeSingle()
+    .maybeSingle()) as { data: { password_hash: string } | null }
 
   if (!data) {
     redirect(`/${slug}/dashboard?error=notfound`)

@@ -30,11 +30,11 @@ export async function POST(req: Request) {
   const supabase = createSupabaseAdminClient()
 
   // Resolve slug → invitation_id server-side
-  const { data: invitation, error: invErr } = await supabase
+  const { data: invitation, error: invErr } = (await supabase
     .from('invitations')
     .select('id, is_published')
     .eq('slug', slug)
-    .maybeSingle()
+    .maybeSingle()) as { data: { id: string; is_published: boolean } | null; error: any }
 
   if (invErr || !invitation) {
     return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invitation not published' }, { status: 403 })
   }
 
-  const { error } = await supabase.from('rsvps').insert({
+  const { error } = await (supabase.from('rsvps') as any).insert({
     invitation_id: invitation.id,
     guest_name: String(guest_name).slice(0, 120),
     attending,

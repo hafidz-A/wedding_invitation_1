@@ -26,11 +26,11 @@ export async function POST(req: Request) {
 
   const supabase = createSupabaseAdminClient()
 
-  const { data: invitation, error: invErr } = await supabase
+  const { data: invitation, error: invErr } = (await supabase
     .from('invitations')
     .select('id, is_published')
     .eq('slug', slug)
-    .maybeSingle()
+    .maybeSingle()) as { data: { id: string; is_published: boolean } | null; error: any }
 
   if (invErr || !invitation) {
     return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     normalizedAmount = parsed
   }
 
-  const { error } = await supabase.from('gift_confirmations').insert({
+  const { error } = await (supabase.from('gift_confirmations') as any).insert({
     invitation_id: invitation.id,
     guest_name: String(guest_name).slice(0, 120),
     account_used: String(account_used).slice(0, 120),

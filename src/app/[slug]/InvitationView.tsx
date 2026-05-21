@@ -1,5 +1,6 @@
 'use client'
 
+// @ts-ignore — existing JSX file, types resolve at runtime
 import ThemeProvider from '@/components/ThemeProvider.jsx'
 import GlobalBackground from '@/components/GlobalBackground.jsx'
 // @ts-ignore — existing JSX file, types resolve at runtime
@@ -17,7 +18,7 @@ export default function InvitationView({ config, slug }: { config: any; slug: st
   const sections = config?.sections || []
 
   return (
-    <ThemeProvider>
+    <ThemeProvider theme={undefined}>
       <GlobalBackground />
       <BotanicalBorder />
       <SectionRenderer config={config} slug={slug} />
