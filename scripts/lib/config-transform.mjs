@@ -30,6 +30,8 @@ export function replaceSections(config, { brideName, groomName, weddingDate, ven
   const { coupleName, monogram, hashtag, formattedDate } = deriveNames({
     brideName, groomName, weddingDate,
   })
+  const bride = firstName(brideName)
+  const groom = firstName(groomName)
 
   for (const section of config.sections) {
     const p = section.props
@@ -38,8 +40,8 @@ export function replaceSections(config, { brideName, groomName, weddingDate, ven
     switch (section.type) {
       case 'hero':
         p.coupleName  = coupleName
-        p.brideName   = firstName(brideName)
-        p.groomName   = firstName(groomName)
+        p.brideName   = bride
+        p.groomName   = groom
         p.weddingDate = weddingDate
         break
 
@@ -74,11 +76,11 @@ export function replaceSections(config, { brideName, groomName, weddingDate, ven
           for (const person of p.people) {
             if (person.role === 'Bride') {
               person.name    = brideName
-              person.parents = `Daughter of Mr. & Mrs. ${firstName(brideName)}`
+              person.parents = ''
             }
             if (person.role === 'Groom') {
               person.name    = groomName
-              person.parents = `Son of Mr. & Mrs. ${firstName(groomName)}`
+              person.parents = ''
             }
           }
         }

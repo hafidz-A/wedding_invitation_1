@@ -31,6 +31,8 @@ describe('deriveNames', () => {
   it('formattedDate is a non-empty string', () => {
     assert.ok(result.formattedDate.length > 0)
     assert.match(result.formattedDate, /2026/)
+    assert.match(result.formattedDate, /November/)
+    assert.match(result.formattedDate, /Sunday/)
   })
 })
 
