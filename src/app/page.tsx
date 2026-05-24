@@ -65,8 +65,7 @@ export default function HomePage() {
           </Link>
         </div>
         <p style={{ marginTop: 40, fontSize: 13, color: 'rgba(42,33,24,0.55)' }}>
-          Try the demo invitation at <code>/rizky-amara</code> · admin at{' '}
-          <code>/rizky-amara/dashboard</code>
+          Try the demo invitation at <code>/rizky-amara</code>
         </p>
       </div>
     </main>
