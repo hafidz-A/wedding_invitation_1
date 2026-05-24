@@ -145,14 +145,30 @@ cd c:\Users\arifi\Downloads\wedding-saas-next
 npm install                                  # one-time, ~3 min
 # Edit .env.local with Supabase URL + 2 keys
 # Run supabase/schema.sql in Supabase SQL Editor first
-node scripts/create-invitation.mjs rizky-amara demo1234 premium
+
+# Step 1 — create the couple row (password-hashes + starter 6-section config)
+node scripts/create-invitation.mjs rizky-amara demo1234 `
+  --bride="Amara Sastrawijaya" `
+  --groom="Rizky Pratama" `
+  --date=2025-11-15T16:00 `
+  --venue="The Grand Ballroom, Jakarta" `
+  --email=demo@example.com `
+  --plan=premium
+
+# Step 2 — seed the full 14-section cinematic template into the row
+node scripts/seed-full-config.mjs rizky-amara `
+  --bride="Amara Sastrawijaya" `
+  --groom="Rizky Pratama" `
+  --date=2025-11-15T16:00 `
+  --venue="The Grand Ballroom, Jakarta"
+
 npm run dev
 ```
 
 Then:
 - http://localhost:3000 → marketing
-- http://localhost:3000/rizky-amara → invitation (loads from Supabase; if config is empty `{}`, shows bundled demo)
-- http://localhost:3000/rizky-amara/dashboard → login `demo1234` → stub dashboard
+- http://localhost:3000/rizky-amara → full cinematic invitation (14 sections, all enabled)
+- http://localhost:3000/rizky-amara/dashboard → login `demo1234` → dashboard
 
 ---
 
