@@ -18,7 +18,7 @@
 
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 import { replaceSections, enableAll, deriveNames } from './lib/config-transform.mjs'
 
@@ -76,6 +76,11 @@ if (missing.length) {
   process.exit(1)
 }
 
+if (isNaN(new Date(weddingDate).getTime())) {
+  console.error('Invalid --date value. Use ISO format: 2026-11-15T16:00')
+  process.exit(1)
+}
+
 /* ── Supabase ── */
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -86,34 +91,30 @@ if (!url || !key) {
 const supabase = createClient(url, key, { auth: { persistSession: false } })
 
 /* ── Load full template config ── */
-const configPath = resolve(__dirname, '../src/config/pageConfig.js')
-const configUrl = new URL(`file://${configPath}`).href
-const { pageConfig } = await import(configUrl)
-// Deep-clone so the imported module cache is never mutated.
-const config = JSON.parse(JSON.stringify(pageConfig))
+let config
+try {
+  const configPath = resolve(__dirname, '../src/config/pageConfig.js')
+  const configUrl = pathToFileURL(configPath).href
+  const { pageConfig } = await import(configUrl)
+  // Deep-clone so the imported module cache is never mutated.
+  config = JSON.parse(JSON.stringify(pageConfig))
+} catch (e) {
+  console.error('Failed to load pageConfig:', e.message)
+  process.exit(1)
+}
 
 /* ── Transform ── */
 replaceSections(config, { brideName, groomName, weddingDate, venue })
 enableAll(config)
 
 /* ── Update Supabase ── */
-let data, error
-try {
-  const result = await supabase
-    .from('invitations')
-    .update({ config })
-    .eq('slug', slug)
-    .select('slug, is_published, plan')
-    .single()
-  data = result.data
-  error = result.error
-} finally {
-  // Attempt graceful cleanup of HTTP connection
-  // This helps prevent Windows libuv assertion errors
-  if (supabase?.rest?._removeAllListeners) {
-    supabase.rest._removeAllListeners?.()
-  }
-}
+const result = await supabase
+  .from('invitations')
+  .update({ config })
+  .eq('slug', slug)
+  .select('slug, is_published, plan')
+  .single()
+const { data, error } = result
 
 if (error) {
   // .single() returns PGRST116 when 0 rows matched — slug doesn't exist yet.
