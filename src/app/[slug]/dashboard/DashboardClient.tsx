@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import EditorRoot from '@/editor/EditorRoot'
 import RsvpsTab, { type RsvpRow } from './RsvpsTab'
 import GiftsTab, { type GiftRow } from './GiftsTab'
+import styles from './dashboard.module.css'
 
 /**
  * Force re-login on a hard refresh (F5 / Ctrl-R).
@@ -68,36 +69,12 @@ export default function DashboardClient({
         color: '#2A2118',
       }}
     >
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '20px 32px',
-          borderBottom: '1px solid rgba(42,33,24,0.08)',
-          background: 'rgba(255,255,255,0.7)',
-          backdropFilter: 'blur(10px)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-        }}
-      >
-        <div>
-          <p style={{ margin: 0, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.28em', color: '#E8553E' }}>
-            Dashboard
-          </p>
-          <h1
-            style={{
-              margin: 0,
-              fontFamily: 'var(--font-display, serif)',
-              fontStyle: 'italic',
-              fontSize: 28,
-            }}
-          >
-            {slug}
-          </h1>
+      <header className={styles.header}>
+        <div className={styles.headerLeft}>
+          <p>Dashboard</p>
+          <h1>{slug}</h1>
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div className={styles.headerActions}>
           <span
             style={{
               padding: '6px 12px',
@@ -130,13 +107,13 @@ export default function DashboardClient({
         </div>
       </header>
 
-      <nav style={{ display: 'flex', gap: 4, padding: '16px 32px 0', borderBottom: '1px solid rgba(42,33,24,0.06)' }}>
+      <nav className={styles.nav}>
         {(['overview', 'rsvps', 'gifts', 'editor'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             style={{
-              padding: '12px 18px',
+              padding: '12px 16px',
               border: 'none',
               background: 'transparent',
               color: tab === t ? '#2A2118' : 'rgba(42,33,24,0.55)',
@@ -147,6 +124,7 @@ export default function DashboardClient({
               borderBottom: tab === t ? '2px solid #E8553E' : '2px solid transparent',
               cursor: 'pointer',
               transition: 'color 0.2s ease',
+              whiteSpace: 'nowrap',
             }}
           >
             {t}
@@ -154,7 +132,7 @@ export default function DashboardClient({
         ))}
       </nav>
 
-      <section style={{ padding: '32px' }}>
+      <section className={styles.content}>
         {tab === 'overview' && (
           <div style={cardStyle}>
             <h2 style={h2Style}>Overview</h2>

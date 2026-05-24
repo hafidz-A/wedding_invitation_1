@@ -73,7 +73,7 @@
 .cardTitle {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 28px;
+  font-size: clamp(20px, 3vw, 28px);
   color: var(--color-charcoal);
 }
 
@@ -108,3 +108,4 @@
 .accent-sky     { --accent: var(--color-sky); }
 
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .card { padding: 24px 18px; } }

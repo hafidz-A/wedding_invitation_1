@@ -21,8 +21,8 @@
 }
 
 .monogram {
-  width: 160px;
-  height: 160px;
+  width: clamp(100px, 25vw, 160px);
+  height: clamp(100px, 25vw, 160px);
   margin-bottom: 8px;
   filter: drop-shadow(0 8px 20px rgba(0,0,0,0.18));
 }
@@ -79,7 +79,7 @@
 .signoff {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 22px;
+  font-size: clamp(17px, 3vw, 22px);
   margin-top: 16px;
 }
 

@@ -1,0 +1,67 @@
+/* Dashboard layout — responsive overrides for DashboardClient */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(14px, 2.5vw, 20px) clamp(16px, 4vw, 32px);
+  border-bottom: 1px solid rgba(42,33,24,0.08);
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.headerLeft h1 {
+  margin: 0;
+  font-family: var(--font-display, serif);
+  font-style: italic;
+  font-size: clamp(20px, 4vw, 28px);
+}
+
+.headerLeft p {
+  margin: 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: #E8553E;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.nav {
+  display: flex;
+  gap: 0;
+  padding: 0 clamp(16px, 4vw, 32px);
+  border-bottom: 1px solid rgba(42,33,24,0.06);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.nav::-webkit-scrollbar { display: none; }
+
+.content {
+  padding: clamp(16px, 4vw, 32px);
+}
+
+/* Login form responsive */
+.loginForm {
+  max-width: 420px;
+  width: 100%;
+  padding: clamp(24px, 6vw, 40px);
+  background: rgba(255,255,255,0.92);
+  border-radius: 22px;
+  box-shadow: 0 20px 60px rgba(42,33,24,0.12);
+  display: grid;
+  gap: 18px;
+}

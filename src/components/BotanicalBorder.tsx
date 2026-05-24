@@ -48,8 +48,10 @@ type BotanicalSketchLayerProps = {
   color?: string
   desktopOpacity?: number
   tabletOpacity?: number
+  mobileOpacity?: number
   desktopWidth?: string
   tabletWidth?: string
+  mobileWidth?: string
   leftId?: string
   rightId?: string
   zIndex?: number
@@ -257,12 +259,14 @@ function BotanicalSvg({ id, stems, sideStyle }: { id: string; stems: Stem[]; sid
 export const BotanicalSketchLayer = React.memo(({
   seed,
   fixed = false,
-  hiddenBelow = 480,
+  hiddenBelow = 0,
   color = '#6b5c4a',
   desktopOpacity = 0.55,
   tabletOpacity = 0.4,
+  mobileOpacity = 0.12,
   desktopWidth = 'clamp(90px, 10vw, 160px)',
   tabletWidth = 'clamp(60px, 8vw, 100px)',
+  mobileWidth = 'clamp(24px, 4.5vw, 38px)',
   leftId = 'botanical-left',
   rightId = 'botanical-right',
   zIndex = 1,
@@ -283,10 +287,14 @@ export const BotanicalSketchLayer = React.memo(({
   const resolvedSeed = useMemo(() => seed ?? Date.now(), [seed])
   const stems = useMemo(() => generateStems(resolvedSeed), [resolvedSeed])
 
-  const svgWidth = windowWidth < 768
-    ? tabletWidth
-    : desktopWidth
-  const borderOpacity = windowWidth < 768 ? tabletOpacity : desktopOpacity
+  const svgWidth = windowWidth < 480
+    ? mobileWidth
+    : windowWidth < 768
+      ? tabletWidth
+      : desktopWidth
+  const borderOpacity = windowWidth < 480
+    ? mobileOpacity
+    : windowWidth < 768 ? tabletOpacity : desktopOpacity
   const isHidden = windowWidth < hiddenBelow
   const shouldHideBeforeFirstAnimation = !hasEnteredRef.current && (!visible || !animateOnScroll)
 

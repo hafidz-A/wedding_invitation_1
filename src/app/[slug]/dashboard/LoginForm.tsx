@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import styles from './dashboard.module.css'
 
 const ERRORS: Record<string, string> = {
   wrongpass: 'Password salah. Coba lagi.',
@@ -32,16 +33,7 @@ export default function LoginForm({
     >
       <form
         action={loginAction}
-        style={{
-          maxWidth: 420,
-          width: '100%',
-          padding: 40,
-          background: 'rgba(255,255,255,0.92)',
-          borderRadius: 22,
-          boxShadow: '0 20px 60px rgba(42,33,24,0.12)',
-          display: 'grid',
-          gap: 18,
-        }}
+        className={styles.loginForm}
       >
         <input type="hidden" name="slug" value={slug} />
 
