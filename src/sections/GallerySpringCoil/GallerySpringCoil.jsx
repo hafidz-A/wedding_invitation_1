@@ -32,6 +32,10 @@ const COMPONENT_STYLES = `
 .gsc-section {
   position: relative;
   width: 100%;
+  /* Contain any horizontal overflow from the bouquets (which use
+     left/right: -14% on mobile) and 3D-rotated coil cards so the page
+     never gets a horizontal scrollbar from this section. */
+  overflow: hidden;
   background: var(--color-bg, var(--color-cream, #f5f0eb));
   color: var(--color-text, var(--color-charcoal, #2a2118));
 }
@@ -642,12 +646,16 @@ export default function GallerySpringCoil({
     let raf = 0
     let inView = false
 
-    const applyFrame = () => {
-      if (!inView) {
-        raf = 0
-        return
-      }
-
+    /**
+     * Pure transform computation — no scheduling. Reads scrollProgress
+     * and mouse refs, writes inline styles on coilRef + each card.
+     *
+     * Pulled out of the rAF loop so we can call it *synchronously* on
+     * enter — the very first paint after the section re-enters view
+     * shows the correct coil layout instead of the stale style from
+     * when it last left.
+     */
+    const renderFrame = () => {
       const progress = scrollProgress.current
       const activeRaw = progress * (total - 1)
       const nextActive = clampIndex(Math.round(activeRaw), total)
@@ -703,41 +711,25 @@ export default function GallerySpringCoil({
         lastActiveRef.current = nextActive
         setActiveIndex(nextActive)
       }
+    }
 
+    const applyFrame = () => {
+      if (!inView) {
+        raf = 0
+        return
+      }
+      renderFrame()
       raf = requestAnimationFrame(applyFrame)
     }
 
     const startLoop = () => {
       inView = true
+      // Sync render BEFORE scheduling the rAF — guarantees the first
+      // paint after re-enter shows the correct coil layout, fixing the
+      // "stuck at top" / "cards flat" bug where the browser would paint
+      // a stale transform before the next rAF tick.
+      renderFrame()
       if (!raf) raf = requestAnimationFrame(applyFrame)
-    }
-
-    /**
-     * Reset the coil + all cards to a neutral centered state.
-     *
-     * Called when ScrollTrigger fires onLeave / onLeaveBack so the next time
-     * the user re-enters the section, the coil starts from a clean centered
-     * position rather than retaining whatever translateY it had when the
-     * section last left view (which made the gallery appear "stuck at the
-     * top" after scrolling back).
-     */
-    const resetToNeutral = () => {
-      if (coilRef.current) {
-        coilRef.current.style.transform =
-          `rotateX(${config.coilTiltX}deg) rotateY(0deg) translateY(0px)`
-      }
-      cardsRef.current.forEach((card, index) => {
-        if (!card) return
-        const staticAngle = index * config.rotationPerPhoto
-        card.style.transform = [
-          `rotateY(${staticAngle}deg)`,
-          `translateZ(${config.radius}px)`,
-        ].join(' ')
-        card.style.opacity = ''
-        card.style.filter = ''
-        card.style.zIndex = ''
-      })
-      lastActiveRef.current = -1
     }
 
     const observer = new IntersectionObserver(
@@ -788,26 +780,25 @@ export default function GallerySpringCoil({
         onLeave: () => {
           inView = false
           setGallerySketchVisible(false)
-          resetToNeutral()
+          // Don't reset — cards keep their last computed state. When the
+          // section re-enters, startLoop()'s sync renderFrame() will
+          // immediately update them to the correct progress=0 state on
+          // the first paint, so there's no "stuck at top" flash.
         },
         onLeaveBack: () => {
           inView = false
           setGallerySketchVisible(false)
-          resetToNeutral()
         },
         onUpdate: (self) => {
           scrollProgress.current = self.progress
           startLoop()
         },
         onRefresh: (self) => {
-          // After GSAP recalculates on viewport resize, restart the loop
-          // if the section is currently in its active range — otherwise
-          // ensure we're in the neutral state.
+          // After GSAP recalculates on viewport resize, restart the
+          // loop if the section is currently in its active range.
           if (self.isActive) {
             inView = true
             startLoop()
-          } else {
-            resetToNeutral()
           }
         },
       })
