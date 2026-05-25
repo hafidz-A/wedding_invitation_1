@@ -36,9 +36,14 @@ export default function ForgotPasswordPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
 
+    // Token-based recovery flow: Supabase emails the 6-digit token (the
+    // `{{ .Token }}` variable in the Reset Password template). User enters
+    // it manually on /reset-password — no link-click required. We still
+    // pass redirectTo for users who DO click any URL in the email; it
+    // falls back to the same page.
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${origin}/reset-password`,
+      redirectTo: `${origin}/reset-password?email=${encodeURIComponent(email.trim())}`,
     })
 
     if (resetErr) {
@@ -63,10 +68,16 @@ export default function ForgotPasswordPage() {
           <div style={{ display: 'grid', gap: 16 }}>
             <p style={hint}>
               Jika email <strong>{email}</strong> terdaftar, kamu akan menerima
-              email berisi link reset password. Link berlaku sekitar 1 jam.
+              email berisi <strong>kode 6 digit</strong>. Kode berlaku 1 jam.
               Cek folder spam kalau tidak muncul.
             </p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link
+              href={`/reset-password?email=${encodeURIComponent(email)}`}
+              style={{ ...primaryBtn, textAlign: 'center', textDecoration: 'none', display: 'block' }}
+            >
+              Lanjut: masukkan token →
+            </Link>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
               {slug && (
                 <Link href={`/${slug}/dashboard`} style={ghostBtn}>
                   ← Kembali ke login
@@ -80,8 +91,8 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={onSubmit} style={{ display: 'grid', gap: 18 }}>
             <p style={hint}>
-              Masukkan email yang terdaftar saat invitation dibuat. Kami kirim
-              link untuk reset password (via Supabase Auth).
+              Masukkan email yang terdaftar. Kami kirim <strong>kode 6 digit</strong>{' '}
+              ke email kamu — pakai kode itu untuk reset password.
             </p>
 
             <label style={{ display: 'grid', gap: 6 }}>

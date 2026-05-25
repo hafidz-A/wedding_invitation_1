@@ -1,64 +1,57 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 
 /**
- * /reset-password — set a new password after clicking the email link.
+ * /reset-password — TOKEN-based password reset.
  *
- * Supabase Auth's reset-password email links to this page with the
- * recovery tokens in the URL FRAGMENT (#access_token=...&type=recovery).
- * The Supabase JS SDK detects the fragment automatically on mount and
- * establishes a recovery-mode session. We then just need to call
- * `supabase.auth.updateUser({ password })`.
+ * User flow:
+ *   1. Receives a 6-digit token via email (sent from /forgot-password)
+ *   2. Opens /reset-password (manually or from email link)
+ *   3. Enters email + token + new password
+ *   4. Page calls supabase.auth.verifyOtp({ email, token, type: 'recovery' })
+ *      → that exchanges the token for a session
+ *   5. Page calls supabase.auth.updateUser({ password }) to set the new password
+ *   6. Looks up the user's invitation slug → redirects to dashboard
  *
- * No custom token table or backend endpoint needed.
+ * Supabase Dashboard config required:
+ *   Authentication → Email Templates → Reset Password →
+ *   Make sure the body includes {{ .Token }} (the 6-digit code).
+ *   The default template uses {{ .ConfirmationURL }}; you can keep that
+ *   too, or replace it. Example body:
+ *
+ *     <p>Kode reset password Anda:</p>
+ *     <h2>{{ .Token }}</h2>
+ *     <p>Masukkan kode ini di halaman reset password.</p>
  */
 function ResetPasswordInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const presetEmail = searchParams.get('email') || ''
 
-  const [ready, setReady] = useState(false)
-  const [hasSession, setHasSession] = useState(false)
+  const [email, setEmail] = useState(presetEmail)
+  const [token, setToken] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  )
-
-  // On mount, the SDK reads the recovery tokens from the URL hash
-  // (#access_token=...&type=recovery) and sets a session. We listen
-  // for the PASSWORD_RECOVERY event to confirm we're in recovery mode.
-  useEffect(() => {
-    let mounted = true
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return
-      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
-        setHasSession(true)
-      }
-      setReady(true)
-    })
-
-    // Fallback: check current session synchronously in case the event
-    // already fired before we mounted (e.g. tab restored).
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return
-      if (data.session) setHasSession(true)
-      setReady(true)
-    })
-
-    return () => { mounted = false }
-  }, [supabase])
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
+    if (!email.trim()) {
+      setError('Email kosong')
+      return
+    }
+    if (!token.trim()) {
+      setError('Token kosong')
+      return
+    }
     if (password.length < 6) {
       setError('Password minimal 6 karakter')
       return
@@ -67,17 +60,36 @@ function ResetPasswordInner() {
       setError('Konfirmasi password tidak sama')
       return
     }
+
     setSubmitting(true)
 
-    const { error: updErr } = await supabase.auth.updateUser({ password })
-    if (updErr) {
-      setError(updErr.message || 'Gagal reset password')
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
+
+    // 1. Verify the 6-digit OTP to get a recovery session
+    const { error: verifyErr } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: token.trim(),
+      type: 'recovery',
+    })
+
+    if (verifyErr) {
+      setError(verifyErr.message || 'Token salah atau sudah kadaluarsa')
       setSubmitting(false)
       return
     }
 
-    // Look up the user's invitation slug so we can deep-link them back
-    // to their dashboard after success.
+    // 2. Set the new password using the now-active recovery session
+    const { error: updErr } = await supabase.auth.updateUser({ password })
+    if (updErr) {
+      setError(updErr.message || 'Gagal update password')
+      setSubmitting(false)
+      return
+    }
+
+    // 3. Look up the user's invitation slug so we can deep-link them
     const { data: { user } } = await supabase.auth.getUser()
     let slug = ''
     if (user) {
@@ -93,30 +105,8 @@ function ResetPasswordInner() {
     setSubmitting(false)
 
     if (slug) {
-      // Already signed in via the recovery session — go straight to dashboard
       setTimeout(() => router.replace(`/${slug}/dashboard`), 1200)
     }
-  }
-
-  if (!ready) {
-    return (
-      <div style={card}>
-        <p style={hint}>Loading…</p>
-      </div>
-    )
-  }
-
-  if (!hasSession) {
-    return (
-      <div style={card}>
-        <h1 style={title}>Tautan tidak valid atau kadaluarsa</h1>
-        <p style={hint}>
-          Link reset password sudah tidak aktif (kadaluarsa atau pernah dipakai).
-          Minta link baru dari halaman lupa password.
-        </p>
-        <Link href="/forgot-password" style={linkStyle}>Minta tautan baru →</Link>
-      </div>
-    )
   }
 
   if (done) {
@@ -126,9 +116,7 @@ function ResetPasswordInner() {
           <p style={kicker}>Berhasil</p>
           <h1 style={title}>Password sudah diubah</h1>
         </header>
-        <p style={hint}>
-          Kamu sudah otomatis login. Mengarahkan ke dashboard…
-        </p>
+        <p style={hint}>Kamu otomatis login. Mengarahkan ke dashboard…</p>
       </div>
     )
   }
@@ -136,21 +124,55 @@ function ResetPasswordInner() {
   return (
     <div style={card}>
       <header style={{ textAlign: 'center', marginBottom: 8 }}>
-        <p style={kicker}>Dashboard</p>
-        <h1 style={title}>Set password baru</h1>
+        <p style={kicker}>Reset Password</p>
+        <h1 style={title}>Masukkan token</h1>
       </header>
 
-      <form onSubmit={onSubmit} style={{ display: 'grid', gap: 18 }}>
+      <form onSubmit={onSubmit} style={{ display: 'grid', gap: 16 }}>
+        <p style={hint}>
+          Cek inbox email — kami mengirim kode 6 digit. Paste di sini bersama
+          email & password baru.
+        </p>
+
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={label}>Email</span>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="kamu@email.com"
+            style={input}
+            autoComplete="email"
+          />
+        </label>
+
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={label}>Token (6 digit)</span>
+          <input
+            type="text"
+            required
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={6}
+            value={token}
+            onChange={(e) => setToken(e.target.value.replace(/\D/g, ''))}
+            placeholder="123456"
+            style={{ ...input, letterSpacing: '0.3em', fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, SFMono-Regular, monospace' }}
+            autoFocus={!!presetEmail}
+          />
+        </label>
+
         <label style={{ display: 'grid', gap: 6 }}>
           <span style={label}>Password baru (min 6 karakter)</span>
           <input
             type="password"
             required
             minLength={6}
-            autoFocus
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             style={input}
+            autoComplete="new-password"
           />
         </label>
 
@@ -163,14 +185,19 @@ function ResetPasswordInner() {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             style={input}
+            autoComplete="new-password"
           />
         </label>
 
         {error && <p style={errorStyle}>{error}</p>}
 
         <button type="submit" disabled={submitting} style={primaryBtn}>
-          {submitting ? 'Menyimpan…' : 'Set password baru'}
+          {submitting ? 'Memproses…' : 'Set password baru'}
         </button>
+
+        <p style={{ textAlign: 'center', margin: 0 }}>
+          <Link href="/forgot-password" style={linkStyle}>← Belum dapat token? Kirim ulang</Link>
+        </p>
       </form>
     </div>
   )
