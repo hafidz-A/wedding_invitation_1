@@ -128,10 +128,18 @@
   font-weight: 500;
   text-align: right;
   font-variant-numeric: tabular-nums;
+  /* Breathing room between the time digits and the vertical timeline /
+     dot. Without this padding the text right-aligns flush against the
+     80px column edge — and the dot/line sits right next to that edge,
+     so "15:30" visually collides with the dot. */
+  padding-right: 18px;
 }
 
 /* Compact time badge in pinned mode (fits 7 events in 100vh) */
-.pinnedMode .timeBadge { font-size: clamp(14px, 1.6vw, 18px); }
+.pinnedMode .timeBadge {
+  font-size: clamp(14px, 1.6vw, 18px);
+  padding-right: 14px;
+}
 
 /* ---------- Card ----------
    IMPORTANT: motion controls `transform` per frame for the slide-in.
@@ -224,7 +232,7 @@
 @media (max-width: 760px) {
   .timelineLine { left: 22px; }
   .event { grid-template-columns: 1fr; gap: 6px; padding-left: 44px; }
-  .timeBadge { text-align: left; font-size: 18px; }
+  .timeBadge { text-align: left; font-size: 18px; padding-right: 0; }
   .card { grid-template-columns: 1fr; gap: 12px; }
   .card::before { left: -34px; top: -22px; transform: translate(0, 0); }
 }
