@@ -712,6 +712,34 @@ export default function GallerySpringCoil({
       if (!raf) raf = requestAnimationFrame(applyFrame)
     }
 
+    /**
+     * Reset the coil + all cards to a neutral centered state.
+     *
+     * Called when ScrollTrigger fires onLeave / onLeaveBack so the next time
+     * the user re-enters the section, the coil starts from a clean centered
+     * position rather than retaining whatever translateY it had when the
+     * section last left view (which made the gallery appear "stuck at the
+     * top" after scrolling back).
+     */
+    const resetToNeutral = () => {
+      if (coilRef.current) {
+        coilRef.current.style.transform =
+          `rotateX(${config.coilTiltX}deg) rotateY(0deg) translateY(0px)`
+      }
+      cardsRef.current.forEach((card, index) => {
+        if (!card) return
+        const staticAngle = index * config.rotationPerPhoto
+        card.style.transform = [
+          `rotateY(${staticAngle}deg)`,
+          `translateZ(${config.radius}px)`,
+        ].join(' ')
+        card.style.opacity = ''
+        card.style.filter = ''
+        card.style.zIndex = ''
+      })
+      lastActiveRef.current = -1
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -760,10 +788,12 @@ export default function GallerySpringCoil({
         onLeave: () => {
           inView = false
           setGallerySketchVisible(false)
+          resetToNeutral()
         },
         onLeaveBack: () => {
           inView = false
           setGallerySketchVisible(false)
+          resetToNeutral()
         },
         onUpdate: (self) => {
           scrollProgress.current = self.progress
@@ -771,10 +801,13 @@ export default function GallerySpringCoil({
         },
         onRefresh: (self) => {
           // After GSAP recalculates on viewport resize, restart the loop
-          // if the section is currently active (progress 0–1 exclusive).
-          if (self.progress > 0 && self.progress < 1) {
+          // if the section is currently in its active range — otherwise
+          // ensure we're in the neutral state.
+          if (self.isActive) {
             inView = true
             startLoop()
+          } else {
+            resetToNeutral()
           }
         },
       })
