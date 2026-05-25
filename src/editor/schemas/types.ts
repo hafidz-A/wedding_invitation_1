@@ -13,6 +13,7 @@ export type FieldType =
   | 'image'
   | 'imageArray'
   | 'objectArray'
+  | 'audio'
 
 export interface BaseField {
   key: string
@@ -39,6 +40,9 @@ export interface SelectField extends BaseField {
 }
 export interface ImageField extends BaseField {
   type: 'image'
+}
+export interface AudioField extends BaseField {
+  type: 'audio'
 }
 export interface ImageArrayField extends BaseField {
   type: 'imageArray'
@@ -67,6 +71,7 @@ export type FieldDef =
   | ImageField
   | ImageArrayField
   | ObjectArrayField
+  | AudioField
 
 export interface SectionSchema {
   type: string

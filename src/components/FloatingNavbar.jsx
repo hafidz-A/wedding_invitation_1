@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import styles from './FloatingNavbar.module.css'
 
@@ -39,9 +39,6 @@ const DEFAULT_LABELS = {
 export default function FloatingNavbar({ sections = [], threshold = 600 }) {
   const [visible, setVisible] = useState(false)
   const [activeId, setActiveId] = useState(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
-  const listRef = useRef(null)
 
   // Show/hide based on scroll position
   useEffect(() => {
@@ -111,29 +108,6 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
     }
   }
 
-  const checkScroll = () => {
-    const el = listRef.current
-    if (!el) return
-    setCanScrollLeft(el.scrollLeft > 4)
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
-  }
-
-  const scrollNav = (dir) => {
-    const el = listRef.current
-    if (!el) return
-    el.scrollBy({ left: dir * 120, behavior: 'smooth' })
-  }
-
-  useEffect(() => {
-    const el = listRef.current
-    if (!el) return undefined
-    checkScroll()
-    el.addEventListener('scroll', checkScroll, { passive: true })
-    const ro = new ResizeObserver(checkScroll)
-    ro.observe(el)
-    return () => { el.removeEventListener('scroll', checkScroll); ro.disconnect() }
-  }, [visible, items.length])
-
   if (items.length === 0) return null
 
   return (
@@ -148,15 +122,7 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
           aria-hidden={!visible}
         >
           <nav className={styles.nav} aria-label="Section navigation">
-            {canScrollLeft && (
-              <button
-                type="button"
-                className={`${styles.scrollBtn} ${styles.scrollBtnLeft}`}
-                onClick={() => scrollNav(-1)}
-                aria-label="Scroll nav left"
-              >‹</button>
-            )}
-            <ul ref={listRef} className={styles.list}>
+            <ul className={styles.list}>
               {items.map((it) => (
                 <li key={it.id}>
                   <a
@@ -172,14 +138,6 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
                 </li>
               ))}
             </ul>
-            {canScrollRight && (
-              <button
-                type="button"
-                className={`${styles.scrollBtn} ${styles.scrollBtnRight}`}
-                onClick={() => scrollNav(1)}
-                aria-label="Scroll nav right"
-              >›</button>
-            )}
           </nav>
         </motion.div>
       )}

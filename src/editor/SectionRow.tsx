@@ -1,8 +1,10 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { SectionEntry } from './EditorProvider'
+import { useEditor } from './EditorProvider'
 
 interface Props {
   section: SectionEntry
@@ -15,6 +17,35 @@ interface Props {
 
 export default function SectionRow({ section, label, isSelected, onSelect, onToggleEnabled, onRemove }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id })
+  const { renameSectionNav } = useEditor()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(section.navLabel || '')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus()
+      inputRef.current?.select()
+    }
+  }, [editing])
+
+  // Reset draft when section's saved navLabel changes externally.
+  useEffect(() => {
+    setDraft(section.navLabel || '')
+  }, [section.navLabel])
+
+  const displayLabel = section.navLabel || label
+  const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0
+
+  function commit() {
+    renameSectionNav(section.id, draft)
+    setEditing(false)
+  }
+
+  function cancel() {
+    setDraft(section.navLabel || '')
+    setEditing(false)
+  }
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -41,7 +72,46 @@ export default function SectionRow({ section, label, isSelected, onSelect, onTog
       >
         ⠿
       </span>
-      <span style={{ flex: 1, fontSize: 13, color: '#2A2118' }}>{label}</span>
+
+      <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
+        {editing ? (
+          <input
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); commit() }
+              if (e.key === 'Escape') { e.preventDefault(); cancel() }
+            }}
+            placeholder={label}
+            maxLength={24}
+            style={renameInput}
+          />
+        ) : (
+          <span style={nameStyle} title={displayLabel}>{displayLabel}</span>
+        )}
+        <span style={typeStyle}>
+          {editing
+            ? `${wordCount}/2 kata — Enter simpan, Esc batal`
+            : section.navLabel
+              ? <span style={{ color: 'rgba(42,33,24,0.45)' }}>({label})</span>
+              : null}
+        </span>
+      </div>
+
+      {!editing && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setEditing(true) }}
+          title="Rename navbar label"
+          style={iconBtn}
+          aria-label="Rename"
+        >
+          ✏️
+        </button>
+      )}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onToggleEnabled() }}
@@ -50,16 +120,52 @@ export default function SectionRow({ section, label, isSelected, onSelect, onTog
           width: 12, height: 12, borderRadius: 999,
           border: 'none', cursor: 'pointer',
           background: section.enabled === false ? 'rgba(42,33,24,0.18)' : '#2D8C4E',
+          flexShrink: 0,
         }}
       />
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); if (confirm(`Remove section "${label}"?`)) onRemove() }}
-        style={{ border: 'none', background: 'transparent', color: 'rgba(42,33,24,0.4)', cursor: 'pointer', fontSize: 14 }}
+        onClick={(e) => { e.stopPropagation(); if (confirm(`Remove section "${displayLabel}"?`)) onRemove() }}
+        style={{ border: 'none', background: 'transparent', color: 'rgba(42,33,24,0.4)', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
         aria-label="Remove section"
       >
         ×
       </button>
     </div>
   )
+}
+
+const nameStyle: React.CSSProperties = {
+  fontSize: 13,
+  color: '#2A2118',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+}
+
+const typeStyle: React.CSSProperties = {
+  fontSize: 10,
+  color: 'rgba(42,33,24,0.5)',
+  letterSpacing: '0.04em',
+}
+
+const renameInput: React.CSSProperties = {
+  width: '100%',
+  padding: '4px 8px',
+  borderRadius: 6,
+  border: '1px solid rgba(232,85,62,0.4)',
+  background: '#fff',
+  fontSize: 13,
+  color: '#2A2118',
+  outline: 'none',
+}
+
+const iconBtn: React.CSSProperties = {
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  fontSize: 12,
+  padding: '2px 4px',
+  opacity: 0.55,
+  flexShrink: 0,
 }

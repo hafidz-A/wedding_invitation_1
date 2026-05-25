@@ -17,6 +17,7 @@ import { faqSchema } from './faq'
 import { guestbookSchema } from './guestbook'
 import { playlistSchema } from './playlist'
 import { footerSchema } from './footer'
+import { musicPopupSchema } from './musicPopup'
 
 export const schemaRegistry: Record<string, SectionSchema> = {
   hero:              heroSchema,
@@ -37,6 +38,7 @@ export const schemaRegistry: Record<string, SectionSchema> = {
   guestbook:         guestbookSchema,
   playlist:          playlistSchema,
   footer:            footerSchema,
+  musicPopup:        musicPopupSchema,
 }
 
 export type { SectionSchema, FieldDef } from './types'

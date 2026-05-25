@@ -11,6 +11,7 @@ import SelectField from './fields/SelectField'
 import ImageField from './fields/ImageField'
 import ImageArrayField from './fields/ImageArrayField'
 import ObjectArrayField from './fields/ObjectArrayField'
+import AudioField from './fields/AudioField'
 
 interface Props {
   slug: string
@@ -65,6 +66,7 @@ function renderField(
     case 'boolean':    return <BooleanField  key={f.key} label={f.label} value={!!value} onChange={(v) => onChange(v)} help={f.help} />
     case 'select':     return <SelectField   key={f.key} label={f.label} value={value ?? ''} options={f.options} onChange={(v) => onChange(v)} help={f.help} />
     case 'image':      return <ImageField    key={f.key} label={f.label} value={value ?? ''} slug={slug} onChange={(v) => onChange(v)} help={f.help} />
+    case 'audio':      return <AudioField    key={f.key} label={f.label} value={value ?? ''} slug={slug} onChange={(v) => onChange(v)} help={f.help} />
     case 'imageArray': return <ImageArrayField key={f.key} label={f.label} value={Array.isArray(value) ? value : []} slug={slug} onChange={(v) => onChange(v)} help={f.help} />
     case 'objectArray':return <ObjectArrayField
                                 key={f.key}

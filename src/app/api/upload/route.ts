@@ -4,8 +4,11 @@ import { cookies } from 'next/headers'
 
 const SESSION_COOKIE_PREFIX = 'wsaas_admin_'
 const BUCKET = 'invitation-media'
-const ALLOWED_MIMES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
-const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
+const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+const ALLOWED_AUDIO_MIMES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/x-m4a', 'audio/mp4'])
+const ALLOWED_MIMES = new Set([...ALLOWED_IMAGE_MIMES, ...ALLOWED_AUDIO_MIMES])
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024 // 5 MB
+const MAX_AUDIO_BYTES = 12 * 1024 * 1024 // 12 MB
 
 /**
  * POST /api/upload (multipart)
@@ -47,8 +50,11 @@ export async function POST(req: Request) {
   if (!ALLOWED_MIMES.has(file.type)) {
     return NextResponse.json({ error: `Unsupported mime: ${file.type}` }, { status: 400 })
   }
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: 'File too large (max 5 MB)' }, { status: 400 })
+  const isAudio = ALLOWED_AUDIO_MIMES.has(file.type)
+  const maxBytes = isAudio ? MAX_AUDIO_BYTES : MAX_IMAGE_BYTES
+  if (file.size > maxBytes) {
+    const maxMb = Math.round(maxBytes / 1024 / 1024)
+    return NextResponse.json({ error: `File too large (max ${maxMb} MB)` }, { status: 400 })
   }
 
   // --- upload ---

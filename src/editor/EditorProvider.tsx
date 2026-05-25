@@ -46,6 +46,7 @@ type Action =
   | { type: 'REORDER_ARRAY_ITEMS'; sectionId: string; key: string; from: number; to: number }
   | { type: 'REORDER_SECTIONS';    from: number; to: number }
   | { type: 'TOGGLE_SECTION_ENABLED'; sectionId: string }
+  | { type: 'RENAME_SECTION_NAV';     sectionId: string; navLabel: string }
   | { type: 'ADD_SECTION';            sectionType: string; label: string; defaults?: Record<string, unknown> }
   | { type: 'REMOVE_SECTION';         sectionId: string }
   | { type: 'SELECT_SECTION';         sectionId: string }
@@ -141,6 +142,18 @@ function reducer(state: State, action: Action): State {
         })),
       }
 
+    case 'RENAME_SECTION_NAV': {
+      // Trim, collapse spaces, take first 2 words, cap at 24 chars.
+      const cleaned = action.navLabel.trim().replace(/\s+/g, ' ').split(' ').slice(0, 2).join(' ').slice(0, 24)
+      return {
+        ...state,
+        config: patchSection(state.config, action.sectionId, (s) => ({
+          ...s,
+          navLabel: cleaned || undefined,
+        })),
+      }
+    }
+
     case 'ADD_SECTION': {
       const id = `${action.sectionType}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
       const newSection: SectionEntry = {
@@ -198,6 +211,7 @@ interface EditorContextValue extends State {
   reorderArrayItems: (sectionId: string, key: string, from: number, to: number) => void
   reorderSections: (from: number, to: number) => void
   toggleSectionEnabled: (sectionId: string) => void
+  renameSectionNav: (sectionId: string, navLabel: string) => void
   addSection: (sectionType: string, label: string, defaults?: Record<string, unknown>) => void
   removeSection: (sectionId: string) => void
   selectSection: (sectionId: string) => void
@@ -283,6 +297,8 @@ export function EditorProvider({ slug, initialConfig, children }: ProviderProps)
     reorderSections: (from, to) => dispatch({ type: 'REORDER_SECTIONS', from, to }),
     toggleSectionEnabled: (sectionId) =>
       dispatch({ type: 'TOGGLE_SECTION_ENABLED', sectionId }),
+    renameSectionNav: (sectionId, navLabel) =>
+      dispatch({ type: 'RENAME_SECTION_NAV', sectionId, navLabel }),
     addSection: (sectionType, label, defaults) =>
       dispatch({ type: 'ADD_SECTION', sectionType, label, defaults }),
     removeSection: (sectionId) => dispatch({ type: 'REMOVE_SECTION', sectionId }),
