@@ -11,17 +11,12 @@ import NotesTab, { type NoteRow } from './NotesTab'
 import styles from './dashboard.module.css'
 
 /**
- * Force re-login on a hard refresh (F5 / Ctrl-R).
+ * Force re-login on a hard refresh (F5 / Ctrl-R) — keeps the dashboard
+ * locked when a couple's family member opens the same browser later.
  *
- * Uses Performance Navigation Timing to distinguish:
- *   • 'navigate'      — fresh navigation (incl. server redirect after login) → KEEP session
- *   • 'reload'        — user pressed refresh → LOG OUT
- *   • 'back_forward'  — browser history → keep session
- *   • 'prerender'     — keep session
- *
- * This avoids the trap of a sessionStorage sentinel persisting across
- * unrelated logins in the same tab, which used to immediately log the user
- * out the moment they signed back in.
+ * Uses Performance Navigation Timing to distinguish 'reload' from
+ * 'navigate' / 'back_forward' / 'prerender', so only the genuine F5
+ * triggers a logout. Supabase Auth's session is cleared via /api/auth/logout.
  */
 function useRefreshLogoutGuard(slug: string) {
   useEffect(() => {
@@ -34,8 +29,7 @@ function useRefreshLogoutGuard(slug: string) {
 
     fetch('/api/auth/logout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slug }),
+      headers: { Accept: 'application/json' },
     }).finally(() => {
       window.location.replace(`/${slug}/dashboard`)
     })
@@ -109,6 +103,25 @@ export default function DashboardClient({
           >
             View live →
           </Link>
+          <form action="/api/auth/logout" method="post" style={{ display: 'inline' }}>
+            <button
+              type="submit"
+              style={{
+                padding: '8px 14px',
+                borderRadius: 999,
+                background: 'transparent',
+                color: 'rgba(42,33,24,0.6)',
+                border: '1px solid rgba(42,33,24,0.18)',
+                fontSize: 11,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}
+              title="Logout"
+            >
+              Logout
+            </button>
+          </form>
         </div>
       </header>
 

@@ -1,24 +1,56 @@
 'use client'
 
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
 import styles from './dashboard.module.css'
 
 const ERRORS: Record<string, string> = {
-  wrongpass: 'Password salah. Coba lagi.',
-  notfound: 'Slug tidak ditemukan.',
-  missing: 'Mohon isi password.',
+  wrongpass: 'Email atau password salah.',
+  notfound: 'Akun tidak ditemukan.',
+  missing: 'Mohon isi email & password.',
+  notowner: 'Akun ini bukan pemilik undangan ini.',
 }
 
-export default function LoginForm({
-  slug,
-  loginAction,
-}: {
-  slug: string
-  loginAction: (formData: FormData) => Promise<void>
-}) {
+export default function LoginForm({ slug }: { slug: string }) {
   const searchParams = useSearchParams()
-  const error = searchParams.get('error')
+  const router = useRouter()
+  const initialError = searchParams.get('error') || ''
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(initialError && ERRORS[initialError] ? ERRORS[initialError] : '')
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email.trim() || !password) {
+      setError(ERRORS.missing)
+      return
+    }
+    setSubmitting(true)
+    setError('')
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
+
+    if (signInError) {
+      setError(ERRORS.wrongpass)
+      setSubmitting(false)
+      return
+    }
+
+    // Reload so the server component re-runs and detects the new session.
+    router.refresh()
+  }
 
   return (
     <main
@@ -31,12 +63,7 @@ export default function LoginForm({
         fontFamily: 'var(--font-body, system-ui)',
       }}
     >
-      <form
-        action={loginAction}
-        className={styles.loginForm}
-      >
-        <input type="hidden" name="slug" value={slug} />
-
+      <form onSubmit={onSubmit} className={styles.loginForm}>
         <header style={{ textAlign: 'center', marginBottom: 8 }}>
           <p
             style={{
@@ -53,70 +80,51 @@ export default function LoginForm({
             style={{
               fontFamily: 'var(--font-display, serif)',
               fontStyle: 'italic',
-              fontSize: 36,
+              fontSize: 32,
               margin: 0,
               color: '#2A2118',
             }}
           >
-            Masuk untuk {slug}
+            Masuk untuk <span style={{ fontStyle: 'normal', fontWeight: 600 }}>{slug}</span>
           </h1>
         </header>
 
         <label style={{ display: 'grid', gap: 6 }}>
-          <span
-            style={{
-              fontSize: 11,
-              textTransform: 'uppercase',
-              letterSpacing: '0.22em',
-              color: 'rgba(42,33,24,0.7)',
-            }}
-          >
-            Password
-          </span>
+          <span style={lbl}>Email</span>
           <input
-            type="password"
-            name="password"
+            type="email"
+            name="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
             autoFocus
-            placeholder="••••••••"
-            style={{
-              padding: '13px 16px',
-              borderRadius: 10,
-              border: '1px solid rgba(42,33,24,0.12)',
-              fontSize: 15,
-              outline: 'none',
-            }}
+            placeholder="you@example.com"
+            style={input}
           />
         </label>
 
-        {error && (
-          <p style={{ color: '#E8553E', fontSize: 13, margin: 0 }}>
-            {ERRORS[error] || 'Terjadi kesalahan, coba lagi.'}
-          </p>
-        )}
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span style={lbl}>Password</span>
+          <input
+            type="password"
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            placeholder="••••••••"
+            style={input}
+          />
+        </label>
 
-        <button
-          type="submit"
-          style={{
-            padding: '14px 24px',
-            borderRadius: 999,
-            background: '#2A2118',
-            color: '#F5EFE3',
-            fontSize: 13,
-            fontWeight: 500,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            border: 'none',
-            cursor: 'pointer',
-            marginTop: 4,
-          }}
-        >
-          Masuk
+        {error && <p style={errorStyle}>{error}</p>}
+
+        <button type="submit" disabled={submitting} style={submitBtn}>
+          {submitting ? 'Loading…' : 'Masuk'}
         </button>
 
         <p style={{ textAlign: 'center', margin: 0 }}>
           <Link
-            href="/forgot-password"
+            href={`/forgot-password?slug=${encodeURIComponent(slug)}`}
             style={{ color: '#E8553E', fontSize: 13, textDecoration: 'none' }}
           >
             Lupa password?
@@ -125,4 +133,39 @@ export default function LoginForm({
       </form>
     </main>
   )
+}
+
+const lbl: React.CSSProperties = {
+  fontSize: 11,
+  textTransform: 'uppercase',
+  letterSpacing: '0.22em',
+  color: 'rgba(42,33,24,0.7)',
+}
+
+const input: React.CSSProperties = {
+  padding: '13px 16px',
+  borderRadius: 10,
+  border: '1px solid rgba(42,33,24,0.12)',
+  fontSize: 15,
+  outline: 'none',
+}
+
+const submitBtn: React.CSSProperties = {
+  padding: '14px 24px',
+  borderRadius: 999,
+  background: '#2A2118',
+  color: '#F5EFE3',
+  fontSize: 13,
+  fontWeight: 500,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  border: 'none',
+  cursor: 'pointer',
+  marginTop: 4,
+}
+
+const errorStyle: React.CSSProperties = {
+  color: '#E8553E',
+  fontSize: 13,
+  margin: 0,
 }

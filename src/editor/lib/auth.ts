@@ -1,30 +1,39 @@
-import { cookies } from 'next/headers'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 
-const SESSION_COOKIE_PREFIX = 'wsaas_admin_'
-
 /**
- * Mirrors the auth check in src/app/[slug]/dashboard/page.tsx: the cookie
- * value is the first 32 chars of the bcrypt password_hash. We re-fetch the
- * invitation to compare and return its id when the request is authorized.
+ * Verify that the current request is authenticated as the OWNER of the
+ * invitation identified by `slug`.
+ *
+ * Auth model (post-migration):
+ *   - Each invitation has `owner_user_id` pointing to a row in auth.users
+ *   - Session is a Supabase Auth session cookie (managed by @supabase/ssr)
+ *   - User signs in with email + password OR via password reset link
  *
  * Returns the invitation row on success, null on failure. Route handlers
  * should respond 403 when null is returned.
+ *
+ * The function name is kept (`verifyOwnership`) so that the dozen API
+ * routes and server actions that already call it don't need to change.
  */
-export async function verifyOwnership(slug: string): Promise<{ id: string; password_hash: string } | null> {
-  const cookieStore = cookies()
-  const cookie = cookieStore.get(`${SESSION_COOKIE_PREFIX}${slug}`)
-  if (!cookie?.value) return null
+export async function verifyOwnership(slug: string): Promise<{ id: string; owner_user_id: string } | null> {
+  // 1. Who is the request from? (anon Supabase Auth session)
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
 
-  const supabase = createSupabaseAdminClient()
-  const { data } = (await supabase
+  // 2. Look up the invitation by slug using the ADMIN client (bypasses RLS
+  //    — we'll enforce ownership ourselves below). Cheaper than relying on
+  //    the per-row RLS policy for the dashboard's many writes.
+  const admin = createSupabaseAdminClient()
+  const { data: invitation } = (await admin
     .from('invitations')
-    .select('id, password_hash')
+    .select('id, owner_user_id')
     .eq('slug', slug)
-    .maybeSingle()) as { data: { id: string; password_hash: string } | null }
+    .maybeSingle()) as { data: { id: string; owner_user_id: string | null } | null }
 
-  if (!data) return null
-  const fingerprint = (data.password_hash as string).slice(0, 32)
-  if (cookie.value !== fingerprint) return null
-  return data as { id: string; password_hash: string }
+  if (!invitation) return null
+  if (invitation.owner_user_id !== user.id) return null
+
+  return { id: invitation.id, owner_user_id: user.id }
 }

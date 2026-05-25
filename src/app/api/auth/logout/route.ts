@@ -1,21 +1,27 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-
-const SESSION_COOKIE_PREFIX = 'wsaas_admin_'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 /**
  * POST /api/auth/logout
- * Body: { slug: string }
  *
- * Clears the per-slug admin session cookie. No ownership check needed —
- * if you don't have the cookie you have nothing to clear anyway, and the
- * delete is scoped to a single slug name.
+ * Signs the user out of Supabase Auth (clears the auth session cookies)
+ * and redirects to the home page on a non-AJAX submit.
+ *
+ * Accepts both:
+ *   - form submit (returns 303 redirect)
+ *   - fetch from client code (returns JSON)
  */
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => null)
-  const slug = body && typeof body.slug === 'string' ? body.slug : ''
-  if (!slug) return NextResponse.json({ error: 'Missing slug' }, { status: 400 })
+  const supabase = createSupabaseServerClient()
+  await supabase.auth.signOut()
 
-  cookies().delete(`${SESSION_COOKIE_PREFIX}${slug}`)
-  return NextResponse.json({ ok: true })
+  const accept = req.headers.get('accept') || ''
+  const isJson = accept.includes('application/json')
+
+  if (isJson) {
+    return NextResponse.json({ ok: true })
+  }
+
+  // Form submit — redirect to home
+  return NextResponse.redirect(new URL('/', req.url), { status: 303 })
 }

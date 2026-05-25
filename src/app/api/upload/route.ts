@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
-import { cookies } from 'next/headers'
+import { verifyOwnership } from '@/editor/lib/auth'
 
-const SESSION_COOKIE_PREFIX = 'wsaas_admin_'
 const BUCKET = 'invitation-media'
 const ALLOWED_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const ALLOWED_AUDIO_MIMES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/x-m4a', 'audio/mp4'])
@@ -30,21 +29,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing slug or file' }, { status: 400 })
   }
 
-  // --- ownership check (inline; this route does not import @/editor to keep
-  //     the api boundary independent of the editor namespace) ---
-  const cookie = cookies().get(`${SESSION_COOKIE_PREFIX}${slug}`)
-  if (!cookie?.value) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-
+  // Ownership check via Supabase Auth session.
+  const owner = await verifyOwnership(slug)
+  if (!owner) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  const invitation = { id: owner.id }
   const supabase = createSupabaseAdminClient()
-  const { data: invitation } = (await supabase
-    .from('invitations')
-    .select('id, password_hash')
-    .eq('slug', slug)
-    .maybeSingle()) as { data: { id: string; password_hash: string } | null }
-  if (!invitation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (cookie.value !== invitation.password_hash.slice(0, 32)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-  }
 
   // --- validate ---
   if (!ALLOWED_MIMES.has(file.type)) {
