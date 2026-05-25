@@ -1,7 +1,10 @@
 /* ============================================================================
-   FLOATING NAVBAR — centered via full-width flex shell, not translate-X.
-   Avoids edge clipping on narrow viewports and keeps the nav perfectly
-   centered regardless of inner width.
+   FLOATING NAVBAR — single-row scrollable pill with ‹ › buttons.
+   Each pill displays a 2-word section label stacked on two lines (see
+   `white-space: pre-line` below) so renamed sections like "Pegas Coil"
+   render as:
+       Pegas
+       Coil
    ============================================================================ */
 
 .shell {
@@ -12,7 +15,7 @@
   z-index: 100;
   display: flex;
   justify-content: center;
-  pointer-events: none;            /* the nav itself catches pointer */
+  pointer-events: none;
   padding: 0 16px;
 }
 
@@ -20,7 +23,7 @@
   pointer-events: auto;
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   background: rgba(253, 246, 236, 0.82);
   border: 1px solid rgba(42, 33, 24, 0.08);
   border-radius: 26px;
@@ -32,36 +35,68 @@
   max-width: min(960px, 94vw);
 }
 
+.scrollBtn {
+  flex-shrink: 0;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(42,33,24,0.12);
+  background: rgba(253,246,236,0.95);
+  color: var(--color-charcoal, #2a2118);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  z-index: 2;
+}
+
+.scrollBtn:hover { background: rgba(42,33,24,0.08); transform: scale(1.05); }
 
 .list {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
+  align-items: stretch;
   gap: clamp(2px, 0.5vw, 6px);
   padding: 6px;
   margin: 0;
   list-style: none;
-  /* Allow growth to multiple rows when items don't fit horizontally.
-     Scroll buttons are kept defensively but won't appear once items wrap. */
+  overflow-x: auto;
   scrollbar-width: none;
+  scroll-behavior: smooth;
+  flex: 1;
+  min-width: 0;
 }
 .list::-webkit-scrollbar { display: none; }
 
+.list > li {
+  display: flex;
+  align-items: stretch;
+}
+
 .link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   font-family: var(--font-body);
   font-size: 12px;
   letter-spacing: 0.12em;
+  line-height: 1.15;
   text-transform: uppercase;
-  padding: 9px 16px;
-  border-radius: var(--border-radius-pill);
+  padding: 7px 14px;
+  border-radius: 18px;
   color: var(--color-charcoal);
   text-decoration: none;
-  white-space: nowrap;
+  /* pre-line collapses spaces but preserves \n — used by the JS to stack
+     2-word labels into 2 lines without affecting 1-word labels. */
+  white-space: pre-line;
   scroll-snap-align: center;
   transition: background 0.28s ease, color 0.28s ease, transform 0.28s ease;
   font-weight: 500;
+  min-width: max-content;
 }
 
 .link:hover,
@@ -86,11 +121,12 @@
   .shell { top: 10px; padding: 0 10px; }
   .link {
     font-size: 11px;
-    padding: 8px 12px;
+    padding: 6px 11px;
     letter-spacing: 0.08em;
   }
+  .scrollBtn { width: 26px; height: 26px; font-size: 16px; margin: 4px; }
 }
 
 @media (max-width: 400px) {
-  .link { font-size: 10.5px; padding: 7px 10px; }
+  .link { font-size: 10.5px; padding: 5px 9px; }
 }

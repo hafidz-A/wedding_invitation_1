@@ -9,13 +9,9 @@ import { BotanicalBorder } from '@/components/BotanicalBorder.tsx'
 import SectionRenderer from '@/renderers/SectionRenderer.jsx'
 import FloatingNavbar from '@/components/FloatingNavbar.jsx'
 
-// MusicPopup is an OVERLAY section — rendered outside the normal flow.
+// MusicPopup is mounted as an OVERLAY when config.music.url is set —
+// independent of the sections list, configured in the dashboard "Music" tab.
 const MusicPopup = lazy(() => import('@/sections/MusicPopup/index.js'))
-
-// Overlay section types — extracted from the regular sections list so they
-// render as fixed/overlay elements without taking up vertical space and
-// without appearing in the floating navbar.
-const OVERLAY_TYPES = new Set(['musicPopup'])
 
 /**
  * Client wrapper that boots all the existing wedding template components
@@ -24,28 +20,28 @@ const OVERLAY_TYPES = new Set(['musicPopup'])
  * Mirrors the original src/App.jsx + src/pages/Home.jsx composition.
  */
 export default function InvitationView({ config, slug }: { config: any; slug: string }) {
-  const allSections = config?.sections || []
-  const inlineSections = allSections.filter((s: any) => !OVERLAY_TYPES.has(s.type))
-  const overlaySections = allSections.filter((s: any) => OVERLAY_TYPES.has(s.type) && s.enabled !== false)
-
-  const inlineConfig = { ...config, sections: inlineSections }
+  const sections = config?.sections || []
+  const music = config?.music
+  const musicActive = music?.url && music.enabled !== false
 
   return (
     <ThemeProvider theme={undefined}>
       <GlobalBackground />
       <BotanicalBorder />
-      <SectionRenderer config={inlineConfig} slug={slug} />
-      <FloatingNavbar sections={inlineSections} />
-      {overlaySections.map((s: any) => {
-        if (s.type === 'musicPopup') {
-          return (
-            <Suspense key={s.id} fallback={null}>
-              <MusicPopup {...(s.props || {})} />
-            </Suspense>
-          )
-        }
-        return null
-      })}
+      <SectionRenderer config={config} slug={slug} />
+      <FloatingNavbar sections={sections} />
+      {musicActive && (
+        <Suspense fallback={null}>
+          <MusicPopup
+            audioUrl={music.url}
+            title={music.title}
+            subtitle={music.subtitle}
+            acceptLabel={music.acceptLabel}
+            dismissLabel={music.dismissLabel}
+            loop={music.loop}
+          />
+        </Suspense>
+      )}
     </ThemeProvider>
   )
 }

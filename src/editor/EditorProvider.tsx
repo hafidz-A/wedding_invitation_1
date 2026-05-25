@@ -24,8 +24,19 @@ export interface SectionEntry {
   decorativeLayers?: unknown[]
 }
 
+export interface MusicSettings {
+  url?: string
+  enabled?: boolean
+  title?: string
+  subtitle?: string
+  acceptLabel?: string
+  dismissLabel?: string
+  loop?: boolean
+}
+
 export interface PageConfig {
   meta?: { title?: string; description?: string }
+  music?: MusicSettings
   sections: SectionEntry[]
 }
 

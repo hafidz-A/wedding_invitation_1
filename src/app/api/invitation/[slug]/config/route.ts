@@ -34,10 +34,22 @@ export async function PUT(req: Request, { params }: Ctx) {
   }
 
   const supabase = createSupabaseAdminClient()
+
+  // Preserve existing config.music — the Music tab saves to it via a
+  // separate endpoint and editor save MUST NOT clobber it.
+  const { data: existing } = await (supabase.from('invitations') as any)
+    .select('config')
+    .eq('id', owner.id)
+    .single()
+  const existingMusic = existing?.config?.music
+  const mergedConfig = existingMusic !== undefined
+    ? { ...config, music: existingMusic }
+    : config
+
   const savedAt = new Date().toISOString()
   // Cast to any at from() to avoid Supabase 'never' inference on untyped schema
   const { error } = await (supabase.from('invitations') as any)
-    .update({ config, updated_at: savedAt })
+    .update({ config: mergedConfig, updated_at: savedAt })
     .eq('id', owner.id)
 
   if (error) {

@@ -26,7 +26,7 @@ export default function MusicPopup({
   dismissLabel = 'Nanti',
   delayMs = 1500,
   loop = true,
-  accentColor,
+  accentColor = undefined,
 }) {
   const [phase, setPhase] = useState('hidden') // hidden | shown | accepted | dismissed
   const [isPlaying, setIsPlaying] = useState(false)

@@ -33,7 +33,6 @@ export const sectionRegistry = {
   guestbook:      lazy(() => import('../sections/Guestbook/Guestbook.jsx')),
   playlist:       lazy(() => import('../sections/Playlist/Playlist.jsx')),
   footer:         lazy(() => import('../sections/Footer/Footer.jsx')),
-  musicPopup:     lazy(() => import('../sections/MusicPopup/index.js')),
 
   // Generic block-composed section — for future templates that want
   // to build their content from primitive blocks (Text / Image / etc.)

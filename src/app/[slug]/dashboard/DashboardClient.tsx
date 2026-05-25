@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import EditorRoot from '@/editor/EditorRoot'
 import RsvpsTab, { type RsvpRow } from './RsvpsTab'
 import GiftsTab, { type GiftRow } from './GiftsTab'
+import MusicTab from './MusicTab'
 import styles from './dashboard.module.css'
 
 /**
@@ -58,7 +59,7 @@ export default function DashboardClient({
   gifts: GiftRow[]
 }) {
   useRefreshLogoutGuard(slug)
-  const [tab, setTab] = useState<'overview' | 'rsvps' | 'gifts' | 'editor'>('overview')
+  const [tab, setTab] = useState<'overview' | 'rsvps' | 'gifts' | 'editor' | 'music'>('overview')
 
   return (
     <main
@@ -108,7 +109,7 @@ export default function DashboardClient({
       </header>
 
       <nav className={styles.nav}>
-        {(['overview', 'rsvps', 'gifts', 'editor'] as const).map((t) => (
+        {(['overview', 'rsvps', 'gifts', 'editor', 'music'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -156,6 +157,10 @@ export default function DashboardClient({
         {tab === 'rsvps' && <RsvpsTab rsvps={rsvps} />}
 
         {tab === 'gifts' && <GiftsTab gifts={gifts} />}
+
+        {tab === 'music' && (
+          <MusicTab slug={slug} initial={invitation.config?.music ?? null} />
+        )}
       </section>
     </main>
   )

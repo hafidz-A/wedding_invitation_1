@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import styles from './FloatingNavbar.module.css'
 
@@ -39,6 +39,9 @@ const DEFAULT_LABELS = {
 export default function FloatingNavbar({ sections = [], threshold = 600 }) {
   const [visible, setVisible] = useState(false)
   const [activeId, setActiveId] = useState(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+  const listRef = useRef(null)
 
   // Show/hide based on scroll position
   useEffect(() => {
@@ -48,13 +51,15 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [threshold])
 
-  // Build the list of visible nav items
+  // Build the list of visible nav items. For renamed labels with 2 words,
+  // replace the single space with \n so the pill stacks the words on two
+  // lines (paired with `white-space: pre-line` in the CSS).
   const items = sections
     .filter((s) => s.enabled !== false && !s.navHidden)
-    .map((s) => ({
-      id: s.id,
-      label: s.navLabel || DEFAULT_LABELS[s.type] || s.id,
-    }))
+    .map((s) => {
+      const raw = s.navLabel || DEFAULT_LABELS[s.type] || s.id
+      return { id: s.id, label: raw.replace(/\s+/, '\n') }
+    })
 
   // Track which section the user is currently viewing
   useEffect(() => {
@@ -108,6 +113,29 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
     }
   }
 
+  const checkScroll = () => {
+    const el = listRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 4)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+  }
+
+  const scrollNav = (dir) => {
+    const el = listRef.current
+    if (!el) return
+    el.scrollBy({ left: dir * 140, behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return undefined
+    checkScroll()
+    el.addEventListener('scroll', checkScroll, { passive: true })
+    const ro = new ResizeObserver(checkScroll)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', checkScroll); ro.disconnect() }
+  }, [visible, items.length])
+
   if (items.length === 0) return null
 
   return (
@@ -122,7 +150,15 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
           aria-hidden={!visible}
         >
           <nav className={styles.nav} aria-label="Section navigation">
-            <ul className={styles.list}>
+            {canScrollLeft && (
+              <button
+                type="button"
+                className={styles.scrollBtn}
+                onClick={() => scrollNav(-1)}
+                aria-label="Scroll nav left"
+              >‹</button>
+            )}
+            <ul ref={listRef} className={styles.list}>
               {items.map((it) => (
                 <li key={it.id}>
                   <a
@@ -138,6 +174,14 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
                 </li>
               ))}
             </ul>
+            {canScrollRight && (
+              <button
+                type="button"
+                className={styles.scrollBtn}
+                onClick={() => scrollNav(1)}
+                aria-label="Scroll nav right"
+              >›</button>
+            )}
           </nav>
         </motion.div>
       )}
