@@ -34,8 +34,11 @@
  */
 
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /* ────────────────────────── env loader ────────────────────────── */
 
@@ -83,6 +86,12 @@ const weddingDate = flags.date
 const venue = flags.venue || ''
 const email = flags.email
 const plan = flags.plan || 'free'
+// --full       → seed the full 14-section cinematic template
+// --starter    → use the minimal 6-section starter (default)
+// --no-full    → same as --starter
+const useFullConfig = flags.full === 'true' || (flags.full && flags.full !== 'false')
+const wantStarter = flags.starter === 'true' || flags['no-full'] === 'true'
+const seedFull = useFullConfig && !wantStarter
 
 const required = { slug, password, brideName, groomName, weddingDate, email }
 const missing = Object.entries(required).filter(([, v]) => !v).map(([k]) => k)
@@ -95,7 +104,8 @@ if (missing.length) {
   console.error('    --date=2026-11-15T16:00 \\')
   console.error('    --venue="Venue name & address" \\')
   console.error('    --email=couple@gmail.com \\')
-  console.error('    [--plan=free|basic|premium]')
+  console.error('    [--plan=free|basic|premium] \\')
+  console.error('    [--full]              # seed full 14-section template (default = 6-section starter)')
   process.exit(1)
 }
 
@@ -153,13 +163,39 @@ if (createErr) {
   console.log(`  user created (id: ${userId})`)
 }
 
-/* ────────────────────────── 2. Starter config ──────────────────────
-   Minimal but functional. Couple can grow it via "+ Add section"
-   in the editor (which has full default props per type).            */
+/* ────────────────────────── 2. Build config ──────────────────────
+   Two flavors:
+     --full      → load the cinematic 14-section template from
+                    src/config/pageConfig.js, then replace
+                    bride/groom/date/venue placeholders with the
+                    couple's data (uses scripts/lib/config-transform.mjs)
+     (default)   → minimal 6-section starter built inline below
+*/
 
 const coupleName = `${brideName} & ${groomName}`
 const monogram = `${brideName.trim()[0]} & ${groomName.trim()[0]}`
-const config = {
+
+let config
+
+if (seedFull) {
+  console.log('→ Loading full 14-section template…')
+  try {
+    const { replaceSections, enableAll } = await import(
+      pathToFileURL(resolve(__dirname, 'lib/config-transform.mjs')).href
+    )
+    const configPath = resolve(__dirname, '../src/config/pageConfig.js')
+    const { pageConfig } = await import(pathToFileURL(configPath).href)
+    config = JSON.parse(JSON.stringify(pageConfig))
+    replaceSections(config, { brideName, groomName, weddingDate, venue })
+    enableAll(config)
+    console.log(`  loaded ${config.sections.length} sections`)
+  } catch (e) {
+    console.error('Failed to load full template:', e.message)
+    console.error('Falling back to starter config…')
+  }
+}
+
+if (!config) config = {
   meta: {
     title: `${coupleName} — Our Wedding`,
     description: 'Cinematic wedding invitation',
@@ -344,8 +380,16 @@ console.log('  venue:      ', venue || '(not set)')
 console.log('  email:      ', email)
 console.log('  plan:       ', data.plan)
 console.log('  published:  ', data.is_published)
+console.log('  sections:   ', `${config.sections.length}${seedFull ? ' (full template)' : ' (starter — add more via editor or run seed-full-config.mjs)'}`)
 console.log('  user id:    ', userId)
 console.log('  public URL: ', `/${data.slug}`)
 console.log('  dashboard:  ', `/${data.slug}/dashboard`)
 console.log('  login with: ', `${email} / ${password}`)
 console.log('')
+
+if (!seedFull) {
+  console.log('TIP: re-run with --full to seed the cinematic 14-section template')
+  console.log('     in one shot. Or do it separately:')
+  console.log(`     node scripts/seed-full-config.mjs ${slug} --bride=... --groom=... --date=... --venue=...`)
+  console.log('')
+}
