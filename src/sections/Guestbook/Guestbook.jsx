@@ -9,7 +9,7 @@ const DEFAULTS = { title: 'Leave a Note', subtitle: '', initialNotes: [] }
 const COLOR_CYCLE = ['gold', 'coral', 'sky', 'emerald', 'purple']
 
 export default function Guestbook(props) {
-  const { title, subtitle, initialNotes } = { ...DEFAULTS, ...props }
+  const { title, subtitle, initialNotes, slug } = { ...DEFAULTS, ...props }
   const { ref, isVisible } = useScrollReveal()
 
   const [notes, setNotes] = useState(() =>
@@ -17,24 +17,75 @@ export default function Guestbook(props) {
   )
   const [name, setName] = useState('')
   const [message, setMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
 
   const rotations = useMemo(
     () => notes.map(() => (Math.random() * 6 - 3).toFixed(2)),
     [notes.length],
   )
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
-    if (!name.trim() || !message.trim()) return
-    const next = {
-      id: `note-${Date.now()}`,
-      name: name.trim(),
-      message: message.trim(),
+    if (submitting) return
+    const trimmedName = name.trim()
+    const trimmedMessage = message.trim()
+    if (!trimmedName || !trimmedMessage) return
+
+    const optimistic = {
+      id: `temp-${Date.now()}`,
+      name: trimmedName,
+      message: trimmedMessage,
       color: COLOR_CYCLE[notes.length % COLOR_CYCLE.length],
     }
-    setNotes((prev) => [next, ...prev])
+
+    setError(null)
+    setSubmitting(true)
+    // Optimistic insert at top — user sees their note immediately.
+    setNotes((prev) => [optimistic, ...prev])
     setName('')
     setMessage('')
+
+    // Local-only mode (no slug = preview / fallback config) — keep
+    // the optimistic note in state so the demo still feels alive.
+    if (!slug) {
+      setSubmitting(false)
+      return
+    }
+
+    try {
+      const res = await fetch('/api/guestbook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug,
+          name: optimistic.name,
+          message: optimistic.message,
+          color: optimistic.color,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        // Revert optimistic insert
+        setNotes((prev) => prev.filter((n) => n.id !== optimistic.id))
+        setName(optimistic.name)
+        setMessage(optimistic.message)
+        setError(data.error || `Gagal kirim note (${res.status})`)
+      } else {
+        const data = await res.json()
+        // Swap temp ID for the real ID from server
+        setNotes((prev) =>
+          prev.map((n) => (n.id === optimistic.id ? { ...n, id: data.id } : n)),
+        )
+      }
+    } catch (err) {
+      setNotes((prev) => prev.filter((n) => n.id !== optimistic.id))
+      setName(optimistic.name)
+      setMessage(optimistic.message)
+      setError('Network error, coba lagi')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -70,7 +121,14 @@ export default function Guestbook(props) {
             maxLength={240}
             required
           />
-          <button type="submit" className={styles.submit}>Pin my note</button>
+          <button type="submit" className={styles.submit} disabled={submitting}>
+            {submitting ? 'Pinning…' : 'Pin my note'}
+          </button>
+          {error && (
+            <p style={{ margin: '6px 0 0', fontSize: 13, color: '#C43F2A' }}>
+              {error}
+            </p>
+          )}
         </form>
 
         <div className={styles.grid}>

@@ -7,6 +7,7 @@ import RsvpsTab, { type RsvpRow } from './RsvpsTab'
 import GiftsTab, { type GiftRow } from './GiftsTab'
 import MusicTab from './MusicTab'
 import BackgroundTab from './BackgroundTab'
+import NotesTab, { type NoteRow } from './NotesTab'
 import styles from './dashboard.module.css'
 
 /**
@@ -53,14 +54,16 @@ export default function DashboardClient({
   invitation,
   rsvps,
   gifts,
+  notes = [],
 }: {
   slug: string
   invitation: any
   rsvps: RsvpRow[]
   gifts: GiftRow[]
+  notes?: NoteRow[]
 }) {
   useRefreshLogoutGuard(slug)
-  const [tab, setTab] = useState<'overview' | 'rsvps' | 'gifts' | 'editor' | 'music' | 'background'>('overview')
+  const [tab, setTab] = useState<'overview' | 'rsvps' | 'gifts' | 'editor' | 'music' | 'background' | 'notes'>('overview')
 
   return (
     <main
@@ -110,7 +113,7 @@ export default function DashboardClient({
       </header>
 
       <nav className={styles.nav}>
-        {(['overview', 'rsvps', 'gifts', 'editor', 'music', 'background'] as const).map((t) => (
+        {(['overview', 'rsvps', 'gifts', 'notes', 'editor', 'music', 'background'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -166,6 +169,8 @@ export default function DashboardClient({
         {tab === 'background' && (
           <BackgroundTab slug={slug} initial={invitation.config?.bgGif} />
         )}
+
+        {tab === 'notes' && <NotesTab slug={slug} notes={notes} />}
       </section>
     </main>
   )

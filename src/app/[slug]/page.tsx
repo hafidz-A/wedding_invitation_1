@@ -24,12 +24,13 @@ export default async function Page({ params }: PageProps) {
     !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   let config: any = null
+  let invitationId: string | null = null
 
   if (hasSupabase) {
     const supabase = createSupabaseServerClient()
     const { data, error } = await supabase
       .from('invitations')
-      .select('config, is_published, template_id')
+      .select('id, config, is_published, template_id')
       .eq('slug', slug)
       .maybeSingle()
 
@@ -49,6 +50,21 @@ export default async function Page({ params }: PageProps) {
       const isEmpty =
         !data.config || (typeof data.config === 'object' && Object.keys(data.config).length === 0)
       config = isEmpty ? fallbackConfig : data.config
+      invitationId = (data as any).id
+    }
+
+    // Fetch guestbook notes for this invitation (newest first) and inject
+    // them into the guestbook section's `initialNotes` prop so they're
+    // server-rendered — no client-side loading flash.
+    if (invitationId) {
+      const { data: notes } = await supabase
+        .from('guestbook_notes')
+        .select('id, guest_name, message, color, created_at')
+        .eq('invitation_id', invitationId)
+        .eq('is_approved', true)
+        .order('created_at', { ascending: false })
+        .limit(200)
+      config = injectGuestbookNotes(config, notes || [])
     }
   } else {
     // No Supabase configured — local dev fallback
@@ -56,6 +72,29 @@ export default async function Page({ params }: PageProps) {
   }
 
   return <InvitationView config={config} slug={slug} />
+}
+
+/**
+ * Find any guestbook section(s) in the config and replace their
+ * `initialNotes` prop with the fresh DB rows. Returns a NEW config
+ * object — does not mutate the input.
+ */
+function injectGuestbookNotes(config: any, dbNotes: any[]) {
+  if (!config?.sections) return config
+  const mapped = dbNotes.map((n) => ({
+    id: n.id,
+    name: n.guest_name,
+    message: n.message,
+    color: n.color || 'gold',
+  }))
+  return {
+    ...config,
+    sections: config.sections.map((s: any) =>
+      s.type === 'guestbook'
+        ? { ...s, props: { ...(s.props || {}), initialNotes: mapped } }
+        : s,
+    ),
+  }
 }
 
 export async function generateMetadata({ params }: PageProps) {

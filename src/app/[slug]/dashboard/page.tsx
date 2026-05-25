@@ -55,8 +55,9 @@ export default async function DashboardPage({ params }: PageProps) {
     )
   }
 
-  // Fetch RSVPs + gift confirmations for this invitation. Newest first.
-  const [{ data: rsvps }, { data: gifts }] = await Promise.all([
+  // Fetch RSVPs + gift confirmations + guestbook notes for this
+  // invitation in parallel. Newest first.
+  const [{ data: rsvps }, { data: gifts }, { data: notes }] = await Promise.all([
     supabase
       .from('rsvps')
       .select('*')
@@ -67,6 +68,11 @@ export default async function DashboardPage({ params }: PageProps) {
       .select('*')
       .eq('invitation_id', invitation.id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('guestbook_notes')
+      .select('id, guest_name, message, color, created_at')
+      .eq('invitation_id', invitation.id)
+      .order('created_at', { ascending: false }),
   ])
 
   return (
@@ -75,6 +81,7 @@ export default async function DashboardPage({ params }: PageProps) {
       invitation={invitation}
       rsvps={(rsvps as any) || []}
       gifts={(gifts as any) || []}
+      notes={(notes as any) || []}
     />
   )
 }
