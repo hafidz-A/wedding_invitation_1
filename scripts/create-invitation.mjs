@@ -2,8 +2,9 @@
 /**
  * scripts/create-invitation.mjs
  *
- * Onboard a new couple. Hashes the password, builds a starter `config` with
- * their names / date / venue pre-filled, and upserts the row into Supabase.
+ * Onboard a new couple. Creates a Supabase Auth user (email + password)
+ * via the admin API, then inserts the invitations row linking to that
+ * user via owner_user_id. Replaces the old bcrypt+cookie auth model.
  *
  * Usage:
  *   node scripts/create-invitation.mjs <slug> <password> --bride="X" --groom="Y" \
@@ -21,15 +22,19 @@
  *
  * After running, share with the couple:
  *   • Public URL:   /<slug>
- *   • Dashboard:    /<slug>/dashboard   (password you gave them)
- *   • Forgot pwd:   /forgot-password    (uses the email above)
+ *   • Dashboard:    /<slug>/dashboard
+ *   • Login with:   their email + the password you set
+ *   • Forgot pwd:   /forgot-password   (Supabase Auth handles the reset email)
  *
  * Reads SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL from .env.local.
+ *
+ * Prereqs:
+ *   - schema.sql has been applied
+ *   - supabase/migration-auth.sql has been applied (adds owner_user_id column)
  */
 
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import bcrypt from 'bcryptjs'
 import { createClient } from '@supabase/supabase-js'
 
 /* ────────────────────────── env loader ────────────────────────── */
@@ -94,6 +99,11 @@ if (missing.length) {
   process.exit(1)
 }
 
+if (password.length < 6) {
+  console.error('Password too short (Supabase Auth minimum is 6 chars).')
+  process.exit(1)
+}
+
 /* ────────────────────────── supabase ────────────────────────── */
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -105,7 +115,45 @@ if (!url || !key) {
 
 const supabase = createClient(url, key, { auth: { persistSession: false } })
 
-/* ────────────────────────── starter config ──────────────────────
+/* ────────────────────────── 1. Create or find Supabase Auth user ──────
+   admin.createUser is idempotent only by failure — if the email already
+   has a user, we fetch and re-use that user id. */
+
+console.log(`→ Creating Supabase Auth user for ${email}…`)
+
+let userId
+const { data: created, error: createErr } = await supabase.auth.admin.createUser({
+  email,
+  password,
+  email_confirm: true,           // skip the confirmation email — operator already vetted
+  user_metadata: { slug, brideName, groomName },
+})
+
+if (createErr) {
+  // If user already exists, try to look it up and re-use the id.
+  if (/already.*registered|already.*exists|duplicate/i.test(createErr.message)) {
+    console.log('  (user already exists, looking up id…)')
+    const { data: list } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+    const existing = list?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase())
+    if (!existing) {
+      console.error(`  could not locate existing user ${email}`)
+      process.exit(1)
+    }
+    userId = existing.id
+    // Optionally reset their password to match what was supplied.
+    const { error: updErr } = await supabase.auth.admin.updateUserById(existing.id, { password })
+    if (updErr) console.warn('  warning: could not update password:', updErr.message)
+    else console.log('  password updated for existing user')
+  } else {
+    console.error('Auth user create failed:', createErr.message)
+    process.exit(1)
+  }
+} else {
+  userId = created.user.id
+  console.log(`  user created (id: ${userId})`)
+}
+
+/* ────────────────────────── 2. Starter config ──────────────────────
    Minimal but functional. Couple can grow it via "+ Add section"
    in the editor (which has full default props per type).            */
 
@@ -228,7 +276,6 @@ const config = {
           'Kehadiran Anda adalah hadiah terbesar bagi kami. Namun bila Anda berkenan memberikan tanda kasih, kami menyediakan beberapa opsi berikut.',
         confirmationEnabled: true,
         accounts: [
-          // Couple should fill these in via the editor.
           {
             id: 'bank-1',
             type: 'bank',
@@ -257,16 +304,19 @@ const config = {
   ],
 }
 
-/* ────────────────────────── insert ────────────────────────── */
+/* ────────────────────────── 3. Upsert invitation row ──────────────────
+   password_hash is left as a placeholder during the bcrypt → Supabase Auth
+   transition. Drop the column from schema after all rows are migrated. */
 
-const password_hash = await bcrypt.hash(password, 10)
+console.log('→ Upserting invitations row…')
 
 const { data, error } = await supabase
   .from('invitations')
   .upsert(
     {
       slug,
-      password_hash,
+      password_hash: 'supabase-auth-migrated',
+      owner_user_id: userId,
       email,
       plan,
       template_id: 'classic',
@@ -280,9 +330,8 @@ const { data, error } = await supabase
 
 if (error) {
   console.error('Insert failed:', error.message)
-  if (error.message.includes('email')) {
-    console.error('\nHint: did you run supabase/migrations/20260521_password_reset.sql?')
-    console.error('That migration adds the `email` column to invitations.')
+  if (error.message.includes('owner_user_id')) {
+    console.error('\nHint: run supabase/migration-auth.sql first to add the owner_user_id column.')
   }
   process.exit(1)
 }
@@ -292,9 +341,11 @@ console.log('  slug:       ', data.slug)
 console.log('  couple:     ', coupleName)
 console.log('  date:       ', weddingDate)
 console.log('  venue:      ', venue || '(not set)')
-console.log('  email:      ', data.email || '(not set — forgot-password disabled)')
+console.log('  email:      ', email)
 console.log('  plan:       ', data.plan)
 console.log('  published:  ', data.is_published)
+console.log('  user id:    ', userId)
 console.log('  public URL: ', `/${data.slug}`)
-console.log('  dashboard:  ', `/${data.slug}/dashboard  (password: ${password})`)
+console.log('  dashboard:  ', `/${data.slug}/dashboard`)
+console.log('  login with: ', `${email} / ${password}`)
 console.log('')

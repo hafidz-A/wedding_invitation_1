@@ -1,19 +1,60 @@
 'use client'
 
-import { Suspense, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { createBrowserClient } from '@supabase/ssr'
 
+/**
+ * /reset-password — set a new password after clicking the email link.
+ *
+ * Supabase Auth's reset-password email links to this page with the
+ * recovery tokens in the URL FRAGMENT (#access_token=...&type=recovery).
+ * The Supabase JS SDK detects the fragment automatically on mount and
+ * establishes a recovery-mode session. We then just need to call
+ * `supabase.auth.updateUser({ password })`.
+ *
+ * No custom token table or backend endpoint needed.
+ */
 function ResetPasswordInner() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const token = searchParams.get('token') || ''
 
+  const [ready, setReady] = useState(false)
+  const [hasSession, setHasSession] = useState(false)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [doneSlug, setDoneSlug] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+
+  // On mount, the SDK reads the recovery tokens from the URL hash
+  // (#access_token=...&type=recovery) and sets a session. We listen
+  // for the PASSWORD_RECOVERY event to confirm we're in recovery mode.
+  useEffect(() => {
+    let mounted = true
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setHasSession(true)
+      }
+      setReady(true)
+    })
+
+    // Fallback: check current session synchronously in case the event
+    // already fired before we mounted (e.g. tab restored).
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      if (data.session) setHasSession(true)
+      setReady(true)
+    })
+
+    return () => { mounted = false }
+  }, [supabase])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -27,36 +68,58 @@ function ResetPasswordInner() {
       return
     }
     setSubmitting(true)
-    try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, newPassword: password }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(data.error || 'Gagal reset password')
-        return
-      }
-      setDoneSlug(data.slug || '')
-    } catch (err: any) {
-      setError(err?.message || 'Network error')
-    } finally {
+
+    const { error: updErr } = await supabase.auth.updateUser({ password })
+    if (updErr) {
+      setError(updErr.message || 'Gagal reset password')
       setSubmitting(false)
+      return
+    }
+
+    // Look up the user's invitation slug so we can deep-link them back
+    // to their dashboard after success.
+    const { data: { user } } = await supabase.auth.getUser()
+    let slug = ''
+    if (user) {
+      const { data: invitation } = await supabase
+        .from('invitations')
+        .select('slug')
+        .eq('owner_user_id', user.id)
+        .maybeSingle()
+      slug = (invitation as any)?.slug || ''
+    }
+
+    setDone(true)
+    setSubmitting(false)
+
+    if (slug) {
+      // Already signed in via the recovery session — go straight to dashboard
+      setTimeout(() => router.replace(`/${slug}/dashboard`), 1200)
     }
   }
 
-  if (!token) {
+  if (!ready) {
     return (
       <div style={card}>
-        <h1 style={title}>Tautan tidak valid</h1>
-        <p style={hint}>Tautan reset tidak memiliki token. Minta tautan baru dari halaman lupa password.</p>
+        <p style={hint}>Loading…</p>
+      </div>
+    )
+  }
+
+  if (!hasSession) {
+    return (
+      <div style={card}>
+        <h1 style={title}>Tautan tidak valid atau kadaluarsa</h1>
+        <p style={hint}>
+          Link reset password sudah tidak aktif (kadaluarsa atau pernah dipakai).
+          Minta link baru dari halaman lupa password.
+        </p>
         <Link href="/forgot-password" style={linkStyle}>Minta tautan baru →</Link>
       </div>
     )
   }
 
-  if (doneSlug) {
+  if (done) {
     return (
       <div style={card}>
         <header style={{ textAlign: 'center', marginBottom: 8 }}>
@@ -64,16 +127,8 @@ function ResetPasswordInner() {
           <h1 style={title}>Password sudah diubah</h1>
         </header>
         <p style={hint}>
-          Silakan login dengan password baru Anda di dashboard{' '}
-          <strong>{doneSlug}</strong>.
+          Kamu sudah otomatis login. Mengarahkan ke dashboard…
         </p>
-        <button
-          type="button"
-          onClick={() => router.replace(`/${doneSlug}/dashboard`)}
-          style={primaryBtn}
-        >
-          Login ke dashboard
-        </button>
       </div>
     )
   }
@@ -143,7 +198,7 @@ const page: React.CSSProperties = {
 const card: React.CSSProperties = {
   maxWidth: 460,
   width: '100%',
-  padding: 40,
+  padding: 'clamp(24px, 6vw, 40px)',
   background: 'rgba(255,255,255,0.94)',
   borderRadius: 22,
   boxShadow: '0 20px 60px rgba(42,33,24,0.12)',
