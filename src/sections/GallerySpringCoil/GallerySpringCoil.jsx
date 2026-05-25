@@ -65,11 +65,12 @@ const COMPONENT_STYLES = `
   height: clamp(320px, 64vh, 580px);
   width: auto;
   aspect-ratio: 200 / 320;
-  color: var(--color-text, var(--color-charcoal, #6b5c4a));
-  opacity: 0.22;
+  /* No 'color' override — children carry their own fill hex so the bouquet
+     reads as colourful flowers rather than a monochrome silhouette. */
+  opacity: 0.55;
   pointer-events: none;
   z-index: 35;
-  mix-blend-mode: multiply;
+  /* mix-blend-mode removed — multiply was muting the colours into greys */
 }
 
 .gsc-bouquet svg { width: 100%; height: 100%; display: block; }
@@ -87,7 +88,7 @@ const COMPONENT_STYLES = `
 }
 
 @media (max-width: 760px) {
-  .gsc-bouquet { height: clamp(260px, 52vh, 400px); opacity: 0.22; }
+  .gsc-bouquet { height: clamp(260px, 52vh, 400px); opacity: 0.5; }
   .gsc-bouquetLeft  { left: -14%; }
   .gsc-bouquetRight { right: -14%; }
 }
@@ -427,101 +428,121 @@ function BloomingBouquet({ animate }) {
     ease: [0.16, 1, 0.3, 1],
   })
 
+  // Colour palette — botanical hues that read as a wedding bouquet:
+  //   stems/ribbon → sage green
+  //   leaves       → deeper sage
+  //   cluster 1    → blush roses (pink/rose)
+  //   cluster 2    → lavender / lilac
+  //   cluster 3    → peach / apricot
+  //   crown        → sunlit yellow
+  const c = {
+    stem:        '#6b8e5f',
+    ribbon:      '#7d9c6f',
+    leaf:        '#5e8755',
+    roseOuter:   '#c9577a',
+    roseInner:   '#ee9eb3',
+    lavOuter:    '#7c5fa5',
+    lavInner:    '#b8a3da',
+    peachOuter:  '#d9854c',
+    peachInner:  '#f6b884',
+    crownOuter:  '#caa636',
+    crownInner:  '#f3c95a',
+  }
+
   return (
     <svg viewBox="0 0 200 320" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYEnd meet">
-      <g fill="currentColor">
-        {/* Base: stems + ribbon — fades in first */}
-        <motion.g
-          initial={{ opacity: 0 }}
-          animate={animate ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <g stroke="currentColor" strokeWidth="2.2" fill="none" opacity="0.55" strokeLinecap="round">
-            <path d="M 100 230 C 90 260 78 290 66 320" />
-            <path d="M 100 230 L 100 320" />
-            <path d="M 100 230 C 110 260 122 290 134 320" />
-          </g>
-          <path d="M 76 245 L 124 245 L 121 275 L 79 275 Z" opacity="0.55" />
-          <path d="M 70 240 Q 58 258 64 285 Q 76 275 79 260 Z" opacity="0.42" />
-          <path d="M 130 240 Q 142 258 136 285 Q 124 275 121 260 Z" opacity="0.42" />
-        </motion.g>
+      {/* Base: stems + ribbon — fades in first */}
+      <motion.g
+        initial={{ opacity: 0 }}
+        animate={animate ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <g stroke={c.stem} strokeWidth="2.2" fill="none" opacity="0.8" strokeLinecap="round">
+          <path d="M 100 230 C 90 260 78 290 66 320" />
+          <path d="M 100 230 L 100 320" />
+          <path d="M 100 230 C 110 260 122 290 134 320" />
+        </g>
+        <path d="M 76 245 L 124 245 L 121 275 L 79 275 Z" fill={c.ribbon} opacity="0.75" />
+        <path d="M 70 240 Q 58 258 64 285 Q 76 275 79 260 Z" fill={c.ribbon} opacity="0.55" />
+        <path d="M 130 240 Q 142 258 136 285 Q 124 275 121 260 Z" fill={c.ribbon} opacity="0.55" />
+      </motion.g>
 
-        {/* Leaves — frame the bouquet */}
-        <motion.g
-          initial={{ opacity: 0 }}
-          animate={animate ? { opacity: 1 } : { opacity: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <ellipse cx="46"  cy="190" rx="14" ry="44" opacity="0.42" transform="rotate(-32 46 190)" />
-          <ellipse cx="154" cy="190" rx="14" ry="44" opacity="0.42" transform="rotate(32 154 190)" />
-          <ellipse cx="30"  cy="135" rx="11" ry="34" opacity="0.34" transform="rotate(-55 30 135)" />
-          <ellipse cx="170" cy="135" rx="11" ry="34" opacity="0.34" transform="rotate(55 170 135)" />
-          <ellipse cx="74"  cy="225" rx="9"  ry="22" opacity="0.4" transform="rotate(-20 74 225)" />
-          <ellipse cx="126" cy="225" rx="9"  ry="22" opacity="0.4" transform="rotate(20 126 225)" />
-        </motion.g>
+      {/* Leaves — frame the bouquet */}
+      <motion.g
+        initial={{ opacity: 0 }}
+        animate={animate ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        fill={c.leaf}
+      >
+        <ellipse cx="46"  cy="190" rx="14" ry="44" opacity="0.6" transform="rotate(-32 46 190)" />
+        <ellipse cx="154" cy="190" rx="14" ry="44" opacity="0.6" transform="rotate(32 154 190)" />
+        <ellipse cx="30"  cy="135" rx="11" ry="34" opacity="0.5" transform="rotate(-55 30 135)" />
+        <ellipse cx="170" cy="135" rx="11" ry="34" opacity="0.5" transform="rotate(55 170 135)" />
+        <ellipse cx="74"  cy="225" rx="9"  ry="22" opacity="0.55" transform="rotate(-20 74 225)" />
+        <ellipse cx="126" cy="225" rx="9"  ry="22" opacity="0.55" transform="rotate(20 126 225)" />
+      </motion.g>
 
-        {/* Cluster 1 — base (5 flowers) */}
-        <motion.g
-          initial={{ opacity: 0, scale: 0.3, y: 40 }}
-          animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 40 }}
-          transition={clusterTransition(0.55)}
-          style={{ transformOrigin: '100px 210px', transformBox: 'fill-box' }}
-        >
-          <circle cx="100" cy="210" r="24" opacity="0.55" />
-          <circle cx="100" cy="210" r="14" opacity="0.88" />
-          <circle cx="74"  cy="214" r="20" opacity="0.5" />
-          <circle cx="74"  cy="214" r="12" opacity="0.85" />
-          <circle cx="126" cy="214" r="20" opacity="0.5" />
-          <circle cx="126" cy="214" r="12" opacity="0.85" />
-          <circle cx="58"  cy="225" r="14" opacity="0.45" />
-          <circle cx="142" cy="225" r="14" opacity="0.45" />
-        </motion.g>
+      {/* Cluster 1 — base roses (pink/rose) */}
+      <motion.g
+        initial={{ opacity: 0, scale: 0.3, y: 40 }}
+        animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 40 }}
+        transition={clusterTransition(0.55)}
+        style={{ transformOrigin: '100px 210px', transformBox: 'fill-box' }}
+      >
+        <circle cx="100" cy="210" r="24" fill={c.roseOuter} opacity="0.7" />
+        <circle cx="100" cy="210" r="14" fill={c.roseInner} />
+        <circle cx="74"  cy="214" r="20" fill={c.roseOuter} opacity="0.65" />
+        <circle cx="74"  cy="214" r="12" fill={c.roseInner} />
+        <circle cx="126" cy="214" r="20" fill={c.roseOuter} opacity="0.65" />
+        <circle cx="126" cy="214" r="12" fill={c.roseInner} />
+        <circle cx="58"  cy="225" r="14" fill={c.roseOuter} opacity="0.55" />
+        <circle cx="142" cy="225" r="14" fill={c.roseOuter} opacity="0.55" />
+      </motion.g>
 
-        {/* Cluster 2 — middle (5 flowers) */}
-        <motion.g
-          initial={{ opacity: 0, scale: 0.3, y: 30 }}
-          animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 30 }}
-          transition={clusterTransition(0.85)}
-          style={{ transformOrigin: '100px 160px', transformBox: 'fill-box' }}
-        >
-          <circle cx="100" cy="150" r="24" opacity="0.6" />
-          <circle cx="100" cy="150" r="14" opacity="0.9" />
-          <circle cx="72"  cy="165" r="19" opacity="0.55" />
-          <circle cx="72"  cy="165" r="12" opacity="0.88" />
-          <circle cx="128" cy="165" r="19" opacity="0.55" />
-          <circle cx="128" cy="165" r="12" opacity="0.88" />
-          <circle cx="48"  cy="178" r="13" opacity="0.5" />
-          <circle cx="152" cy="178" r="13" opacity="0.5" />
-        </motion.g>
+      {/* Cluster 2 — middle lavender (purple) */}
+      <motion.g
+        initial={{ opacity: 0, scale: 0.3, y: 30 }}
+        animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 30 }}
+        transition={clusterTransition(0.85)}
+        style={{ transformOrigin: '100px 160px', transformBox: 'fill-box' }}
+      >
+        <circle cx="100" cy="150" r="24" fill={c.lavOuter} opacity="0.7" />
+        <circle cx="100" cy="150" r="14" fill={c.lavInner} />
+        <circle cx="72"  cy="165" r="19" fill={c.lavOuter} opacity="0.65" />
+        <circle cx="72"  cy="165" r="12" fill={c.lavInner} />
+        <circle cx="128" cy="165" r="19" fill={c.lavOuter} opacity="0.65" />
+        <circle cx="128" cy="165" r="12" fill={c.lavInner} />
+        <circle cx="48"  cy="178" r="13" fill={c.lavOuter} opacity="0.55" />
+        <circle cx="152" cy="178" r="13" fill={c.lavOuter} opacity="0.55" />
+      </motion.g>
 
-        {/* Cluster 3 — upper (4 flowers) */}
-        <motion.g
-          initial={{ opacity: 0, scale: 0.3, y: 30 }}
-          animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 30 }}
-          transition={clusterTransition(1.15)}
-          style={{ transformOrigin: '100px 110px', transformBox: 'fill-box' }}
-        >
-          <circle cx="100" cy="105" r="22" opacity="0.65" />
-          <circle cx="100" cy="105" r="13" opacity="0.9" />
-          <circle cx="78"  cy="118" r="17" opacity="0.55" />
-          <circle cx="78"  cy="118" r="11" opacity="0.85" />
-          <circle cx="122" cy="118" r="17" opacity="0.55" />
-          <circle cx="122" cy="118" r="11" opacity="0.85" />
-        </motion.g>
+      {/* Cluster 3 — upper peach (apricot) */}
+      <motion.g
+        initial={{ opacity: 0, scale: 0.3, y: 30 }}
+        animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 30 }}
+        transition={clusterTransition(1.15)}
+        style={{ transformOrigin: '100px 110px', transformBox: 'fill-box' }}
+      >
+        <circle cx="100" cy="105" r="22" fill={c.peachOuter} opacity="0.75" />
+        <circle cx="100" cy="105" r="13" fill={c.peachInner} />
+        <circle cx="78"  cy="118" r="17" fill={c.peachOuter} opacity="0.65" />
+        <circle cx="78"  cy="118" r="11" fill={c.peachInner} />
+        <circle cx="122" cy="118" r="17" fill={c.peachOuter} opacity="0.65" />
+        <circle cx="122" cy="118" r="11" fill={c.peachInner} />
+      </motion.g>
 
-        {/* Crown — top (peak flowers) */}
-        <motion.g
-          initial={{ opacity: 0, scale: 0.3, y: 30 }}
-          animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 30 }}
-          transition={clusterTransition(1.45)}
-          style={{ transformOrigin: '100px 70px', transformBox: 'fill-box' }}
-        >
-          <circle cx="100" cy="70" r="24" opacity="0.7" />
-          <circle cx="100" cy="70" r="15" opacity="0.95" />
-          <circle cx="100" cy="40" r="16" opacity="0.65" />
-          <circle cx="100" cy="40" r="10" opacity="0.9" />
-        </motion.g>
-      </g>
+      {/* Crown — sunlit yellow at the top */}
+      <motion.g
+        initial={{ opacity: 0, scale: 0.3, y: 30 }}
+        animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 30 }}
+        transition={clusterTransition(1.45)}
+        style={{ transformOrigin: '100px 70px', transformBox: 'fill-box' }}
+      >
+        <circle cx="100" cy="70" r="24" fill={c.crownOuter} opacity="0.8" />
+        <circle cx="100" cy="70" r="15" fill={c.crownInner} />
+        <circle cx="100" cy="40" r="16" fill={c.crownOuter} opacity="0.75" />
+        <circle cx="100" cy="40" r="10" fill={c.crownInner} />
+      </motion.g>
     </svg>
   )
 }

@@ -11,7 +11,7 @@ import styles from './GlobalBackground.module.css'
  *
  * Responsive-aware: reduces petal count on small screens to avoid crowding.
  */
-export default function GlobalBackground() {
+export default function GlobalBackground({ gifUrl } = {}) {
   const isMobile = useBreakpoint(600)
   const isTablet = useBreakpoint(768)
 
@@ -22,9 +22,15 @@ export default function GlobalBackground() {
     ? PETAL_LAYOUT.filter((_, i) => i % 2 === 0) // 5 petals on tablet
     : PETAL_LAYOUT // all 10 on desktop
 
+  // Couple can replace the default bird GIF via the dashboard "Background"
+  // tab. Empty string means the couple explicitly cleared it — skip rendering.
+  const resolvedGif = gifUrl === undefined ? '/images/wedding-animation.gif' : gifUrl
+
   return (
     <div className={styles.canvas} aria-hidden="true">
-      <img className={styles.gifLayer} src="/images/wedding-animation.gif" alt="" />
+      {resolvedGif ? (
+        <img className={styles.gifLayer} src={resolvedGif} alt="" />
+      ) : null}
 
       {/* ── Ambient colour washes ── */}
       <div className={styles.washes}>

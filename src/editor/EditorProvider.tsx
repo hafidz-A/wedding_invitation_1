@@ -37,6 +37,9 @@ export interface MusicSettings {
 export interface PageConfig {
   meta?: { title?: string; description?: string }
   music?: MusicSettings
+  /** URL untuk GIF background (mis. burung) — diatur lewat dashboard tab
+   *  Background. Kosong string ('') berarti user sengaja menghapus GIF. */
+  bgGif?: string
   sections: SectionEntry[]
 }
 
@@ -154,8 +157,14 @@ function reducer(state: State, action: Action): State {
       }
 
     case 'RENAME_SECTION_NAV': {
-      // Trim, collapse spaces, take first 2 words, cap at 24 chars.
-      const cleaned = action.navLabel.trim().replace(/\s+/g, ' ').split(' ').slice(0, 2).join(' ').slice(0, 24)
+      // Trim, collapse spaces, take up to 4 words, cap at 40 chars.
+      const cleaned = action.navLabel
+        .trim()
+        .replace(/\s+/g, ' ')
+        .split(' ')
+        .slice(0, 4)
+        .join(' ')
+        .slice(0, 40)
       return {
         ...state,
         config: patchSection(state.config, action.sectionId, (s) => ({

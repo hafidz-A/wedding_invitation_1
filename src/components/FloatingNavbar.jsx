@@ -18,6 +18,15 @@ import styles from './FloatingNavbar.module.css'
  * To hide a section from the nav, set `navHidden: true` on its config
  * entry in pageConfig.js. Override the label with `navLabel: '…'`.
  */
+function stackLabel(text) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean)
+  if (words.length <= 1) return words[0] || ''
+  if (words.length === 2) return words.join('\n')
+  // 3 or 4 words — balanced split: first half on line 1, rest on line 2
+  const mid = Math.ceil(words.length / 2)
+  return words.slice(0, mid).join(' ') + '\n' + words.slice(mid).join(' ')
+}
+
 const DEFAULT_LABELS = {
   hero: 'Top',
   countdown: 'Countdown',
@@ -52,17 +61,22 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [threshold])
 
-  // Build the list of visible nav items. For renamed labels with 2 words,
-  // replace the single space with \n so the pill stacks the words on two
-  // lines (paired with `white-space: pre-line` in the CSS). Also skip any
-  // section whose `type` isn't in the section registry — those are stale/
-  // deprecated entries (e.g. legacy musicPopup) and shouldn't pollute the nav.
+  // Build the list of visible nav items. Multi-word labels (up to 4 words)
+  // are split into two balanced lines so the pill stays compact:
+  //   1 word        → "Coil"
+  //   2 words       → "Pegas\nCoil"
+  //   3 words       → "Pegas Coil\nCinta"   (mid = ceil(3/2) = 2)
+  //   4 words       → "Pegas Cinta\nKami Selamanya"
+  // Paired with `white-space: pre-line` in the CSS so the \n becomes a
+  // line break inside the pill. Also skip any section whose `type` isn't
+  // in sectionRegistry — those are stale entries that shouldn't pollute
+  // the nav (e.g. legacy musicPopup).
   const items = sections
     .filter((s) => s.enabled !== false && !s.navHidden)
     .filter((s) => Boolean(sectionRegistry[s.type]))
     .map((s) => {
       const raw = s.navLabel || DEFAULT_LABELS[s.type] || s.id
-      return { id: s.id, label: raw.replace(/\s+/, '\n') }
+      return { id: s.id, label: stackLabel(raw) }
     })
 
   // Track which section the user is currently viewing

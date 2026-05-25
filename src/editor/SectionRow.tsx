@@ -35,7 +35,7 @@ export default function SectionRow({ section, label, isSelected, onSelect, onTog
   }, [section.navLabel])
 
   const displayLabel = section.navLabel || label
-  const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0
+  const wordCount = draft.trim() ? draft.trim().split(/\s+/).slice(0, 4).length : 0
 
   function commit() {
     renameSectionNav(section.id, draft)
@@ -86,7 +86,7 @@ export default function SectionRow({ section, label, isSelected, onSelect, onTog
               if (e.key === 'Escape') { e.preventDefault(); cancel() }
             }}
             placeholder={label}
-            maxLength={24}
+            maxLength={40}
             style={renameInput}
           />
         ) : (
@@ -94,7 +94,7 @@ export default function SectionRow({ section, label, isSelected, onSelect, onTog
         )}
         <span style={typeStyle}>
           {editing
-            ? `${wordCount}/2 kata — Enter simpan, Esc batal`
+            ? `${wordCount}/4 kata — Enter simpan, Esc batal`
             : section.navLabel
               ? <span style={{ color: 'rgba(42,33,24,0.45)' }}>({label})</span>
               : null}

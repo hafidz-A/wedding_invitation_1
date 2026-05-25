@@ -23,10 +23,13 @@ export default function InvitationView({ config, slug }: { config: any; slug: st
   const sections = config?.sections || []
   const music = config?.music
   const musicActive = music?.url && music.enabled !== false
+  // config.bgGif: undefined → use default; '' → no GIF; non-empty → custom URL
+  const bgGif = config?.bgGif
 
   return (
     <ThemeProvider theme={undefined}>
-      <GlobalBackground />
+      {/* @ts-ignore — gifUrl prop from JSX component */}
+      <GlobalBackground gifUrl={bgGif} />
       <BotanicalBorder />
       <SectionRenderer config={config} slug={slug} />
       <FloatingNavbar sections={sections} />
