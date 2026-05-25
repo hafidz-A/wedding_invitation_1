@@ -14,7 +14,6 @@ interface Props {
 }
 
 export default function EditorRoot({ slug, initialConfig, initialIsPublished }: Props) {
-  // Ensure the config has a sections array even when the DB value was null.
   const safeConfig: PageConfig = {
     meta: initialConfig?.meta ?? {},
     sections: Array.isArray(initialConfig?.sections) ? initialConfig.sections : [],
@@ -25,33 +24,70 @@ export default function EditorRoot({ slug, initialConfig, initialIsPublished }: 
   return (
     <EditorProvider slug={slug} initialConfig={safeConfig}>
       <div style={wrap}>
+
+        {/* ── Top bar ── */}
         <div style={topBar}>
           <button
             type="button"
             onClick={() => setPreviewOpen((p) => !p)}
             style={previewToggle}
-            title={previewOpen ? 'Hide preview pane' : 'Show preview pane'}
+            title={previewOpen ? 'Hide preview' : 'Show preview'}
           >
-            {previewOpen ? '◧ Hide preview' : '◨ Show preview'}
+            {previewOpen ? '▲ Hide preview' : '▼ Show preview'}
           </button>
           <SaveBar slug={slug} initialIsPublished={initialIsPublished} />
         </div>
-        <div style={body}>
+
+        {/* ── Editor row: section list + field editor ── */}
+        <div style={editorRow}>
           <SectionList slug={slug} />
-          <main style={pane}>
+          <main style={fieldPane}>
             <FieldEditor slug={slug} />
           </main>
-          {previewOpen && <PreviewPane slug={slug} />}
         </div>
+
+        {/* ── Preview at bottom ── */}
+        {previewOpen && <PreviewPane slug={slug} />}
       </div>
     </EditorProvider>
   )
 }
 
-const wrap: React.CSSProperties = { display: 'grid', gridTemplateRows: 'auto 1fr', minHeight: 'calc(100vh - 200px)' }
-const topBar: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0 16px', gap: 12 }
-const body:  React.CSSProperties = { display: 'flex', gap: 0, background: 'rgba(255,255,255,0.55)', borderRadius: 18, overflow: 'hidden', boxShadow: '0 12px 36px rgba(42,33,24,0.06)', minHeight: 600 }
-const pane:  React.CSSProperties = { flex: 1, padding: 28, overflow: 'auto', minWidth: 0 }
+const wrap: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 0,
+  minHeight: 'calc(100vh - 160px)',
+  background: 'rgba(255,255,255,0.55)',
+  borderRadius: 18,
+  overflow: 'hidden',
+  boxShadow: '0 12px 36px rgba(42,33,24,0.06)',
+}
+
+const topBar: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '14px 20px',
+  borderBottom: '1px solid rgba(42,33,24,0.08)',
+  gap: 12,
+  background: 'rgba(255,255,255,0.8)',
+  flexWrap: 'wrap',
+}
+
+const editorRow: React.CSSProperties = {
+  display: 'flex',
+  minHeight: 480,
+  flex: 1,
+}
+
+const fieldPane: React.CSSProperties = {
+  flex: 1,
+  padding: 28,
+  overflow: 'auto',
+  minWidth: 0,
+}
+
 const previewToggle: React.CSSProperties = {
   padding: '8px 14px',
   borderRadius: 999,

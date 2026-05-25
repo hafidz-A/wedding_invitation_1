@@ -7,67 +7,97 @@ interface Props {
   slug: string
 }
 
-/**
- * Right-side preview iframe. Loads the public invitation page in preview mode.
- *
- * It does NOT update on every keystroke — cinematic sections (GSAP scroll
- * triggers, motion timelines) are too heavy to re-mount on each input change.
- * Instead, the iframe re-mounts whenever `lastSavedAt` changes, so a
- * successful Save → preview refreshes automatically with the new content.
- *
- * The `?v=` cache-buster guarantees the inner page's data fetch is fresh
- * even when Next.js' server-component cache wants to reuse a recent response.
- */
+type DeviceMode = 'desktop' | 'tablet' | 'mobile'
+
+const DEVICE_CONFIG: Record<DeviceMode, { label: string; icon: string; width: number | '100%'; height: number }> = {
+  desktop: { label: 'Desktop', icon: '🖥', width: '100%', height: 620 },
+  tablet:  { label: 'Tablet',  icon: '⬜', width: 768,    height: 680 },
+  mobile:  { label: 'Mobile',  icon: '📱', width: 390,    height: 760 },
+}
+
 export default function PreviewPane({ slug }: Props) {
   const { lastSavedAt, isDirty } = useEditor()
   const [manualRefresh, setManualRefresh] = useState(0)
+  const [device, setDevice] = useState<DeviceMode>('desktop')
   const v = `${lastSavedAt || 'init'}-${manualRefresh}`
+  const cfg = DEVICE_CONFIG[device]
 
   return (
-    <aside style={wrap}>
+    <section style={wrap}>
       <header style={hdr}>
-        <div>
+        <div style={hdrLeft}>
           <p style={kicker}>Preview</p>
-          {isDirty && <p style={dirtyHint}>● Unsaved changes — click Save to update</p>}
+          {isDirty && <p style={dirtyHint}>● Unsaved — Save to update</p>}
+        </div>
+        <div style={deviceToggle}>
+          {(Object.keys(DEVICE_CONFIG) as DeviceMode[]).map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDevice(d)}
+              style={d === device ? deviceBtnActive : deviceBtn}
+              title={DEVICE_CONFIG[d].label}
+            >
+              <span>{DEVICE_CONFIG[d].icon}</span>
+              <span>{DEVICE_CONFIG[d].label}</span>
+            </button>
+          ))}
         </div>
         <button
           type="button"
           onClick={() => setManualRefresh((n) => n + 1)}
           style={refreshBtn}
-          title="Refresh preview iframe"
-        >
-          ↻
-        </button>
+          title="Refresh preview"
+        >↻</button>
       </header>
-      <div style={frameWrap}>
-        <iframe
-          key={v}
-          src={`/${slug}?preview=1&v=${encodeURIComponent(v)}`}
-          style={frame}
-          title="Invitation preview"
-        />
+
+      <div style={stageWrap}>
+        <div
+          style={{
+            ...deviceFrame,
+            width: cfg.width === '100%' ? '100%' : cfg.width,
+            maxWidth: '100%',
+            height: cfg.height,
+          }}
+        >
+          {cfg.width !== '100%' && (
+            <div style={deviceBar}>
+              <span style={deviceDot} />
+              <span style={{ ...deviceDot, flex: 1, borderRadius: 4 }} />
+              <span style={deviceDot} />
+            </div>
+          )}
+          <iframe
+            key={v}
+            src={`/${slug}?preview=1&v=${encodeURIComponent(v)}`}
+            style={{ ...frame, height: cfg.width !== '100%' ? cfg.height - 28 : cfg.height }}
+            title={`Invitation preview — ${cfg.label}`}
+          />
+        </div>
       </div>
-    </aside>
+    </section>
   )
 }
 
 const wrap: React.CSSProperties = {
-  width: 460,
-  flexShrink: 0,
-  borderLeft: '1px solid rgba(42,33,24,0.08)',
+  borderTop: '1px solid rgba(42,33,24,0.08)',
   background: '#F5EFE3',
   display: 'flex',
   flexDirection: 'column',
-  minHeight: 600,
 }
+
 const hdr: React.CSSProperties = {
-  padding: '14px 18px',
+  padding: '12px 18px',
   borderBottom: '1px solid rgba(42,33,24,0.08)',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
   gap: 12,
+  flexWrap: 'wrap',
+  background: 'rgba(255,255,255,0.6)',
 }
+
+const hdrLeft: React.CSSProperties = { flex: 1, minWidth: 120 }
+
 const kicker: React.CSSProperties = {
   margin: 0,
   fontSize: 10,
@@ -75,11 +105,43 @@ const kicker: React.CSSProperties = {
   textTransform: 'uppercase',
   color: '#E8553E',
 }
+
 const dirtyHint: React.CSSProperties = {
-  margin: '4px 0 0',
+  margin: '3px 0 0',
   fontSize: 11,
   color: 'rgba(232,85,62,0.85)',
 }
+
+const deviceToggle: React.CSSProperties = {
+  display: 'flex',
+  gap: 4,
+  background: 'rgba(42,33,24,0.06)',
+  borderRadius: 999,
+  padding: 4,
+}
+
+const deviceBtn: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
+  padding: '5px 12px',
+  borderRadius: 999,
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  fontSize: 12,
+  color: 'rgba(42,33,24,0.6)',
+  letterSpacing: '0.04em',
+}
+
+const deviceBtnActive: React.CSSProperties = {
+  ...deviceBtn,
+  background: '#fff',
+  color: '#2A2118',
+  fontWeight: 600,
+  boxShadow: '0 1px 4px rgba(42,33,24,0.1)',
+}
+
 const refreshBtn: React.CSSProperties = {
   width: 32,
   height: 32,
@@ -89,6 +151,49 @@ const refreshBtn: React.CSSProperties = {
   cursor: 'pointer',
   fontSize: 16,
   lineHeight: 1,
+  flexShrink: 0,
 }
-const frameWrap: React.CSSProperties = { flex: 1, overflow: 'hidden', background: '#fff' }
-const frame: React.CSSProperties = { width: '100%', height: '100%', border: 'none', display: 'block' }
+
+const stageWrap: React.CSSProperties = {
+  flex: 1,
+  padding: '20px 24px 24px',
+  display: 'flex',
+  justifyContent: 'center',
+  overflow: 'auto',
+  background: '#ede8dc',
+}
+
+const deviceFrame: React.CSSProperties = {
+  borderRadius: 12,
+  overflow: 'hidden',
+  boxShadow: '0 8px 32px rgba(42,33,24,0.18), 0 0 0 1px rgba(42,33,24,0.1)',
+  display: 'flex',
+  flexDirection: 'column',
+  background: '#fff',
+  flexShrink: 0,
+}
+
+const deviceBar: React.CSSProperties = {
+  height: 28,
+  background: 'rgba(42,33,24,0.06)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '0 12px',
+  flexShrink: 0,
+}
+
+const deviceDot: React.CSSProperties = {
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  background: 'rgba(42,33,24,0.2)',
+  flexShrink: 0,
+}
+
+const frame: React.CSSProperties = {
+  width: '100%',
+  border: 'none',
+  display: 'block',
+  flex: 1,
+}
