@@ -18,10 +18,10 @@ interface Props {
 }
 
 export default function FieldEditor({ slug }: Props) {
-  const { selectedSection, updateField } = useEditor()
+  const { selectedSection, updateField, removeSection } = useEditor()
 
   if (!selectedSection) {
-    return <div style={empty}>Select a section on the left to start editing.</div>
+    return <div style={empty}>Pilih section di panel kiri untuk mulai edit.</div>
   }
 
   const schema = schemaRegistry[selectedSection.type]
@@ -30,12 +30,34 @@ export default function FieldEditor({ slug }: Props) {
   if (!schema) {
     return (
       <div style={fallback}>
-        <h3 style={h3}>{selectedSection.type}</h3>
-        <p style={{ color: 'rgba(42,33,24,0.65)', fontSize: 13 }}>
-          No schema for section type <code>{selectedSection.type}</code>. Edit the raw JSON in
-          Supabase if you need to change this section.
-        </p>
-        <pre style={pre}>{JSON.stringify(selectedSection, null, 2)}</pre>
+        <header style={{ borderBottom: '1px solid rgba(42,33,24,0.08)', paddingBottom: 12, marginBottom: 16 }}>
+          <p style={kicker}>Section</p>
+          <h3 style={h3}>Section tidak dikenal</h3>
+        </header>
+        <div style={legacyCard}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <span style={legacyIcon}>⚠</span>
+            <div style={{ display: 'grid', gap: 10, flex: 1 }}>
+              <p style={legacyTitle}>Section <code>{selectedSection.type}</code> sudah tidak tersedia</p>
+              <p style={legacyDesc}>
+                Tipe section ini sudah dihapus atau dipindah ke fitur lain
+                (mis. musik kini ada di tab <strong>Music</strong>). Section ini
+                aman untuk dihapus — tidak ditampilkan di halaman undangan.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`Hapus section "${selectedSection.type}"?`)) {
+                    removeSection(selectedSection.id)
+                  }
+                }}
+                style={legacyBtn}
+              >
+                Hapus section ini
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -87,5 +109,25 @@ const kicker:React.CSSProperties = { margin: 0, fontSize: 10, textTransform: 'up
 const h3:   React.CSSProperties = { margin: '4px 0 0', fontFamily: 'var(--font-display, serif)', fontStyle: 'italic', fontSize: 26 }
 const form: React.CSSProperties = { display: 'grid', gap: 20, paddingBottom: 60 }
 const empty:React.CSSProperties = { padding: 40, color: 'rgba(42,33,24,0.6)', fontSize: 14, textAlign: 'center' }
-const fallback: React.CSSProperties = { display: 'grid', gap: 12 }
-const pre:  React.CSSProperties = { background: '#fff', padding: 14, borderRadius: 8, fontSize: 11, maxHeight: 320, overflow: 'auto' }
+const fallback: React.CSSProperties = { display: 'grid', gap: 0 }
+const legacyCard: React.CSSProperties = {
+  padding: 20,
+  background: 'rgba(232,85,62,0.06)',
+  border: '1px solid rgba(232,85,62,0.18)',
+  borderRadius: 14,
+}
+const legacyIcon: React.CSSProperties = {
+  width: 36, height: 36, borderRadius: '50%',
+  background: 'rgba(232,85,62,0.18)', color: '#C43F2A',
+  display: 'grid', placeItems: 'center',
+  fontSize: 18, fontWeight: 700, flexShrink: 0,
+}
+const legacyTitle: React.CSSProperties = { margin: 0, fontSize: 15, color: '#2A2118', fontWeight: 500 }
+const legacyDesc: React.CSSProperties = { margin: 0, fontSize: 13, color: 'rgba(42,33,24,0.65)', lineHeight: 1.55 }
+const legacyBtn: React.CSSProperties = {
+  justifySelf: 'start', marginTop: 4,
+  padding: '10px 18px', borderRadius: 999,
+  background: '#C43F2A', color: '#fff', border: 'none',
+  fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase',
+  fontWeight: 500, cursor: 'pointer',
+}

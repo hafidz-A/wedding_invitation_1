@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
+import { sectionRegistry } from '../config/sectionRegistry.js'
 import styles from './FloatingNavbar.module.css'
 
 /**
@@ -53,9 +54,12 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
 
   // Build the list of visible nav items. For renamed labels with 2 words,
   // replace the single space with \n so the pill stacks the words on two
-  // lines (paired with `white-space: pre-line` in the CSS).
+  // lines (paired with `white-space: pre-line` in the CSS). Also skip any
+  // section whose `type` isn't in the section registry — those are stale/
+  // deprecated entries (e.g. legacy musicPopup) and shouldn't pollute the nav.
   const items = sections
     .filter((s) => s.enabled !== false && !s.navHidden)
+    .filter((s) => Boolean(sectionRegistry[s.type]))
     .map((s) => {
       const raw = s.navLabel || DEFAULT_LABELS[s.type] || s.id
       return { id: s.id, label: raw.replace(/\s+/, '\n') }

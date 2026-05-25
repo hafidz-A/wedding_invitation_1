@@ -243,11 +243,26 @@ interface ProviderProps {
   children: ReactNode
 }
 
+// Section types that used to exist but were removed/moved. Stripped on
+// EditorProvider init so users never see orphan rows in the editor.
+//   • musicPopup → moved to the dashboard "Music" tab
+const DEPRECATED_SECTION_TYPES = new Set<string>(['musicPopup'])
+
+function cleanConfig(input: PageConfig): PageConfig {
+  return {
+    ...input,
+    sections: (input.sections || []).filter(
+      (s) => s && !DEPRECATED_SECTION_TYPES.has(s.type),
+    ),
+  }
+}
+
 export function EditorProvider({ slug, initialConfig, children }: ProviderProps) {
+  const cleaned = cleanConfig(initialConfig)
   const [state, dispatch] = useReducer(reducer, {
-    config: initialConfig,
-    initialConfig,
-    selectedSectionId: initialConfig.sections[0]?.id ?? null,
+    config: cleaned,
+    initialConfig: cleaned,
+    selectedSectionId: cleaned.sections[0]?.id ?? null,
     isSaving: false,
     saveError: null,
     lastSavedAt: null,

@@ -5,8 +5,7 @@ import { ourStorySchema } from './ourStory'
 import { eventDetailsSchema } from './eventDetails'
 import { brideGroomSchema } from './brideGroom'
 import { weddingPartySchema } from './weddingParty'
-import { gallerySchema } from './gallery'
-import { galleryHelixSchema } from './galleryHelix'
+import { galleryMasonrySchema } from './galleryMasonry'
 import { gallerySpringCoilSchema } from './gallerySpringCoil'
 import { scheduleSchema } from './schedule'
 import { rsvpSchema } from './rsvp'
@@ -25,8 +24,7 @@ export const schemaRegistry: Record<string, SectionSchema> = {
   eventDetails:      eventDetailsSchema,
   brideGroom:        brideGroomSchema,
   weddingParty:      weddingPartySchema,
-  gallery:           gallerySchema,
-  galleryHelix:      galleryHelixSchema,
+  galleryMasonry:    galleryMasonrySchema,
   gallerySpringCoil: gallerySpringCoilSchema,
   schedule:          scheduleSchema,
   rsvp:              rsvpSchema,
