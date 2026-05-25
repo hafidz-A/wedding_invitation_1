@@ -691,6 +691,14 @@ export default function GallerySpringCoil({
           scrollProgress.current = self.progress
           startLoop()
         },
+        onRefresh: (self) => {
+          // After GSAP recalculates on viewport resize, restart the loop
+          // if the section is currently active (progress 0–1 exclusive).
+          if (self.progress > 0 && self.progress < 1) {
+            inView = true
+            startLoop()
+          }
+        },
       })
     }, section)
 

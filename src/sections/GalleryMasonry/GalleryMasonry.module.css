@@ -38,7 +38,7 @@
 /* ── Scroll stage ── */
 .stage {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   padding: 0 24px;
   height: 520px;
@@ -114,31 +114,34 @@
   filter: saturate(0.85);
 }
 
-/* ── Responsive ── */
+/* ── Responsive ──
+   Each hidden breakpoint also sets animation:none so when the media
+   query is removed (viewport widens), the CSS animation restarts cleanly
+   from its initial keyframe rather than resuming mid-cycle.
+*/
+@media (max-width: 1280px) {
+  .stage { grid-template-columns: repeat(4, 1fr); }
+  .belt:nth-child(5) { display: none; animation: none; }
+}
+
 @media (max-width: 1023px) {
-  .stage {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  /* Hide columns 3 and 4 */
-  .belt:nth-child(3),
-  .belt:nth-child(4) {
-    display: none;
-  }
+  .stage { grid-template-columns: repeat(3, 1fr); }
+  .belt:nth-child(4),
+  .belt:nth-child(5) { display: none; animation: none; }
 }
 
 @media (max-width: 767px) {
-  .stage {
-    grid-template-columns: 1fr;
-    height: 480px;
-    padding: 0 16px;
-  }
-  /* Hide columns 2, 3, and 4 */
+  .stage { grid-template-columns: repeat(2, 1fr); height: 480px; }
+  .belt:nth-child(3),
+  .belt:nth-child(4),
+  .belt:nth-child(5) { display: none; animation: none; }
+  .header { padding: 0 24px 40px; }
+}
+
+@media (max-width: 480px) {
+  .stage { grid-template-columns: 1fr; padding: 0 16px; }
   .belt:nth-child(2),
   .belt:nth-child(3),
-  .belt:nth-child(4) {
-    display: none;
-  }
-  .header {
-    padding: 0 24px 40px;
-  }
+  .belt:nth-child(4),
+  .belt:nth-child(5) { display: none; animation: none; }
 }

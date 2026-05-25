@@ -12,18 +12,19 @@ const COL_RATIOS = [
   ['1/1', '3/4', '4/3', '3/4'],
   ['4/3', '3/4', '1/1', '3/4'],
   ['3/4', '1/1', '3/4', '4/3'],
+  ['1/1', '4/3', '3/4', '1/1'],
 ]
 
-const COL_SPEEDS = ['20s', '26s', '16s', '22s']
-const COL_DIRS   = ['up', 'down', 'up', 'down']
+const COL_SPEEDS = ['20s', '26s', '16s', '22s', '18s']
+const COL_DIRS   = ['up', 'down', 'up', 'down', 'up']
 
 function distributeToColumns(photos) {
-  const needed = 16
+  const needed = 20
   let pool = [...photos]
   while (pool.length < needed) pool = [...pool, ...photos]
 
-  const cols = [[], [], [], []]
-  pool.forEach((photo, i) => cols[i % 4].push(photo))
+  const cols = [[], [], [], [], []]
+  pool.forEach((photo, i) => cols[i % 5].push(photo))
   return cols
 }
 
