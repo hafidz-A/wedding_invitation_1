@@ -139,9 +139,7 @@
 }
 
 @media (max-width: 480px) {
-  .stage { grid-template-columns: 1fr; padding: 0 16px; }
-  .belt:nth-child(2),
-  .belt:nth-child(3),
-  .belt:nth-child(4),
-  .belt:nth-child(5) { display: none; animation: none; }
+  /* Keep 2 columns at very small phones so a 20-photo gallery still
+     renders quickly in 2 streams; only reduce padding/gap. */
+  .stage { padding: 0 12px; gap: 8px; }
 }

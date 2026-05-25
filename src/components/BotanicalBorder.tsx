@@ -21,7 +21,7 @@ const FLOWER_TYPES = [
   'daisy2',
 ]
 
-const STEM_COUNT = 6
+const STEM_COUNT = 9
 
 type FlowerType = (typeof FLOWER_TYPES)[number]
 
@@ -90,20 +90,21 @@ function generateStems(seed: number): Stem[] {
   const rng = mulberry32(seed)
 
   return Array.from({ length: STEM_COUNT }, (_, i) => {
-    const yStart = 20 + i * (860 / STEM_COUNT)
-    const yEnd = yStart + 80 + rng() * 80
+    const yStart = 10 + i * (880 / STEM_COUNT)
+    const yEnd = yStart + 90 + rng() * 70
 
     return {
       x: 40 + rng() * 60,
       yStart,
       yEnd,
       lean: (rng() - 0.5) * 38,
-      flowers: Array.from({ length: 2 + Math.floor(rng() * 4) }, () => ({
+      // 3–7 flowers per stem (was 2–5) for a fuller, busier look.
+      flowers: Array.from({ length: 3 + Math.floor(rng() * 5) }, () => ({
         type: FLOWER_TYPES[Math.floor(rng() * FLOWER_TYPES.length)] as FlowerType,
-        yOffset: rng() * 100,
-        xOffset: (rng() - 0.5) * 40,
-        scale: 0.7 + rng() * 0.6,
-        rotation: (rng() - 0.5) * 30,
+        yOffset: rng() * 110,
+        xOffset: (rng() - 0.5) * 44,
+        scale: 0.75 + rng() * 0.7,
+        rotation: (rng() - 0.5) * 36,
       })),
     }
   })
@@ -220,7 +221,7 @@ function BotanicalSvg({ id, stems, sideStyle }: { id: string; stems: Stem[]; sid
       id={id}
       style={sideStyle}
       viewBox="0 0 160 900"
-      preserveAspectRatio="xMinYMin meet"
+      preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
     >
@@ -261,12 +262,12 @@ export const BotanicalSketchLayer = React.memo(({
   fixed = false,
   hiddenBelow = 0,
   color = '#6b5c4a',
-  desktopOpacity = 0.55,
-  tabletOpacity = 0.4,
-  mobileOpacity = 0.18,
-  desktopWidth = 'clamp(90px, 10vw, 160px)',
-  tabletWidth = 'clamp(60px, 8vw, 100px)',
-  mobileWidth = 'clamp(24px, 4.5vw, 38px)',
+  desktopOpacity = 0.6,
+  tabletOpacity = 0.5,
+  mobileOpacity = 0.35,
+  desktopWidth = 'clamp(110px, 11vw, 170px)',
+  tabletWidth = 'clamp(80px, 9vw, 120px)',
+  mobileWidth = 'clamp(56px, 14vw, 88px)',
   leftId = 'botanical-left',
   rightId = 'botanical-right',
   zIndex = 1,
@@ -303,7 +304,7 @@ export const BotanicalSketchLayer = React.memo(({
     top: 0,
     width: svgWidth,
     height: '100vh',
-    overflow: 'visible',
+    overflow: 'hidden',
     willChange: 'transform',
   } satisfies React.CSSProperties
 

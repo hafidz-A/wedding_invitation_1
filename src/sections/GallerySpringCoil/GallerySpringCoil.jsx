@@ -62,11 +62,11 @@ const COMPONENT_STYLES = `
 .gsc-bouquet {
   position: absolute;
   bottom: -4%;
-  height: clamp(300px, 60vh, 540px);
+  height: clamp(320px, 64vh, 580px);
   width: auto;
   aspect-ratio: 200 / 320;
   color: var(--color-text, var(--color-charcoal, #6b5c4a));
-  opacity: 0.18;
+  opacity: 0.22;
   pointer-events: none;
   z-index: 35;
   mix-blend-mode: multiply;
@@ -87,9 +87,9 @@ const COMPONENT_STYLES = `
 }
 
 @media (max-width: 760px) {
-  .gsc-bouquet { height: clamp(200px, 42vh, 320px); opacity: 0.14; }
-  .gsc-bouquetLeft  { left: -16%; }
-  .gsc-bouquetRight { right: -16%; }
+  .gsc-bouquet { height: clamp(260px, 52vh, 400px); opacity: 0.22; }
+  .gsc-bouquetLeft  { left: -14%; }
+  .gsc-bouquetRight { right: -14%; }
 }
 
 .gsc-coilAnchor {
@@ -411,59 +411,116 @@ function clampIndex(index, total) {
 }
 
 /**
- * Stylised bouquet silhouette — used twice (left + right) to frame the
- * coil scene. The right side mirrors via `scaleX(-1)` in CSS. Inherits
- * its colour from the parent via `fill="currentColor"`.
+ * Blooming bouquet — replaces the old static silhouette. Stems & ribbon
+ * fade in first, then four flower clusters bloom from the base up to the
+ * crown, each cluster scaling from 0.3→1 with a stagger so the bouquet
+ * grows "from stem to crown" as the section enters viewport. Stacks many
+ * overlapping circles per cluster to give a packed 3D appearance.
+ *
+ * `animate` flips true once the parent section enters the viewport (via
+ * the existing IntersectionObserver in GallerySpringCoil).
  */
-function BouquetSilhouette() {
+function BloomingBouquet({ animate }) {
+  const clusterTransition = (delay) => ({
+    duration: 0.85,
+    delay,
+    ease: [0.16, 1, 0.3, 1],
+  })
+
   return (
     <svg viewBox="0 0 200 320" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYEnd meet">
       <g fill="currentColor">
-        {/* Stems descending into the ribbon wrap */}
-        <g stroke="currentColor" strokeWidth="2" fill="none" opacity="0.5" strokeLinecap="round">
-          <path d="M 100 200 C 88 240 70 280 60 320" />
-          <path d="M 100 200 L 100 320" />
-          <path d="M 100 200 C 112 240 130 280 140 320" />
-        </g>
-        {/* Ribbon at base */}
-        <path d="M 78 220 L 122 220 L 120 248 L 80 248 Z" opacity="0.55" />
+        {/* Base: stems + ribbon — fades in first */}
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={animate ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <g stroke="currentColor" strokeWidth="2.2" fill="none" opacity="0.55" strokeLinecap="round">
+            <path d="M 100 230 C 90 260 78 290 66 320" />
+            <path d="M 100 230 L 100 320" />
+            <path d="M 100 230 C 110 260 122 290 134 320" />
+          </g>
+          <path d="M 76 245 L 124 245 L 121 275 L 79 275 Z" opacity="0.55" />
+          <path d="M 70 240 Q 58 258 64 285 Q 76 275 79 260 Z" opacity="0.42" />
+          <path d="M 130 240 Q 142 258 136 285 Q 124 275 121 260 Z" opacity="0.42" />
+        </motion.g>
 
-        {/* Leaves (back and side) */}
-        <ellipse cx="48"  cy="160" rx="14" ry="42" opacity="0.40" transform="rotate(-32 48 160)" />
-        <ellipse cx="152" cy="155" rx="14" ry="42" opacity="0.40" transform="rotate(32 152 155)" />
-        <ellipse cx="34"  cy="110" rx="11" ry="32" opacity="0.32" transform="rotate(-55 34 110)" />
-        <ellipse cx="166" cy="105" rx="11" ry="32" opacity="0.32" transform="rotate(55 166 105)" />
-        <ellipse cx="80"  cy="190" rx="9"  ry="22" opacity="0.36" transform="rotate(-15 80 190)" />
-        <ellipse cx="120" cy="190" rx="9"  ry="22" opacity="0.36" transform="rotate(15 120 190)" />
+        {/* Leaves — frame the bouquet */}
+        <motion.g
+          initial={{ opacity: 0 }}
+          animate={animate ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          <ellipse cx="46"  cy="190" rx="14" ry="44" opacity="0.42" transform="rotate(-32 46 190)" />
+          <ellipse cx="154" cy="190" rx="14" ry="44" opacity="0.42" transform="rotate(32 154 190)" />
+          <ellipse cx="30"  cy="135" rx="11" ry="34" opacity="0.34" transform="rotate(-55 30 135)" />
+          <ellipse cx="170" cy="135" rx="11" ry="34" opacity="0.34" transform="rotate(55 170 135)" />
+          <ellipse cx="74"  cy="225" rx="9"  ry="22" opacity="0.4" transform="rotate(-20 74 225)" />
+          <ellipse cx="126" cy="225" rx="9"  ry="22" opacity="0.4" transform="rotate(20 126 225)" />
+        </motion.g>
 
-        {/* Central main flower (peony silhouette) */}
-        <g transform="translate(100 108)" opacity="0.78">
-          {[0, 72, 144, 216, 288].map((r) => (
-            <ellipse key={r} cx="0" cy="-26" rx="22" ry="34" transform={`rotate(${r})`} />
-          ))}
-          <circle r="14" opacity="0.9" />
-        </g>
+        {/* Cluster 1 — base (5 flowers) */}
+        <motion.g
+          initial={{ opacity: 0, scale: 0.3, y: 40 }}
+          animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 40 }}
+          transition={clusterTransition(0.55)}
+          style={{ transformOrigin: '100px 210px', transformBox: 'fill-box' }}
+        >
+          <circle cx="100" cy="210" r="24" opacity="0.55" />
+          <circle cx="100" cy="210" r="14" opacity="0.88" />
+          <circle cx="74"  cy="214" r="20" opacity="0.5" />
+          <circle cx="74"  cy="214" r="12" opacity="0.85" />
+          <circle cx="126" cy="214" r="20" opacity="0.5" />
+          <circle cx="126" cy="214" r="12" opacity="0.85" />
+          <circle cx="58"  cy="225" r="14" opacity="0.45" />
+          <circle cx="142" cy="225" r="14" opacity="0.45" />
+        </motion.g>
 
-        {/* Top-left rose */}
-        <g transform="translate(60 75)" opacity="0.68">
-          {[0, 72, 144, 216, 288].map((r) => (
-            <ellipse key={r} cx="0" cy="-18" rx="13" ry="22" transform={`rotate(${r})`} />
-          ))}
-          <circle r="9" opacity="0.9" />
-        </g>
+        {/* Cluster 2 — middle (5 flowers) */}
+        <motion.g
+          initial={{ opacity: 0, scale: 0.3, y: 30 }}
+          animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 30 }}
+          transition={clusterTransition(0.85)}
+          style={{ transformOrigin: '100px 160px', transformBox: 'fill-box' }}
+        >
+          <circle cx="100" cy="150" r="24" opacity="0.6" />
+          <circle cx="100" cy="150" r="14" opacity="0.9" />
+          <circle cx="72"  cy="165" r="19" opacity="0.55" />
+          <circle cx="72"  cy="165" r="12" opacity="0.88" />
+          <circle cx="128" cy="165" r="19" opacity="0.55" />
+          <circle cx="128" cy="165" r="12" opacity="0.88" />
+          <circle cx="48"  cy="178" r="13" opacity="0.5" />
+          <circle cx="152" cy="178" r="13" opacity="0.5" />
+        </motion.g>
 
-        {/* Top-right rose */}
-        <g transform="translate(140 80)" opacity="0.68">
-          {[0, 72, 144, 216, 288].map((r) => (
-            <ellipse key={r} cx="0" cy="-16" rx="12" ry="20" transform={`rotate(${r})`} />
-          ))}
-          <circle r="8" opacity="0.9" />
-        </g>
+        {/* Cluster 3 — upper (4 flowers) */}
+        <motion.g
+          initial={{ opacity: 0, scale: 0.3, y: 30 }}
+          animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 30 }}
+          transition={clusterTransition(1.15)}
+          style={{ transformOrigin: '100px 110px', transformBox: 'fill-box' }}
+        >
+          <circle cx="100" cy="105" r="22" opacity="0.65" />
+          <circle cx="100" cy="105" r="13" opacity="0.9" />
+          <circle cx="78"  cy="118" r="17" opacity="0.55" />
+          <circle cx="78"  cy="118" r="11" opacity="0.85" />
+          <circle cx="122" cy="118" r="17" opacity="0.55" />
+          <circle cx="122" cy="118" r="11" opacity="0.85" />
+        </motion.g>
 
-        {/* Buds */}
-        <circle cx="78"  cy="158" r="10" opacity="0.6" />
-        <circle cx="128" cy="170" r="9"  opacity="0.6" />
-        <circle cx="105" cy="180" r="11" opacity="0.6" />
+        {/* Crown — top (peak flowers) */}
+        <motion.g
+          initial={{ opacity: 0, scale: 0.3, y: 30 }}
+          animate={animate ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.3, y: 30 }}
+          transition={clusterTransition(1.45)}
+          style={{ transformOrigin: '100px 70px', transformBox: 'fill-box' }}
+        >
+          <circle cx="100" cy="70" r="24" opacity="0.7" />
+          <circle cx="100" cy="70" r="15" opacity="0.95" />
+          <circle cx="100" cy="40" r="16" opacity="0.65" />
+          <circle cx="100" cy="40" r="10" opacity="0.9" />
+        </motion.g>
       </g>
     </svg>
   )
@@ -754,12 +811,13 @@ export default function GallerySpringCoil({
             style={{ position: 'absolute' }}
           />
 
-          {/* Romantic bouquet silhouettes framing the coil scene */}
+          {/* Blooming bouquets framing the coil scene — animate from
+              stem to crown when the section enters viewport. */}
           <div className="gsc-bouquet gsc-bouquetLeft" aria-hidden="true">
-            <BouquetSilhouette />
+            <BloomingBouquet animate={hasEntered} />
           </div>
           <div className="gsc-bouquet gsc-bouquetRight" aria-hidden="true">
-            <BouquetSilhouette />
+            <BloomingBouquet animate={hasEntered} />
           </div>
 
           <div className="gsc-stage">
