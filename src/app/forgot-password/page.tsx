@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 /**
@@ -15,7 +15,7 @@ import { createBrowserClient } from '@supabase/ssr'
  * Free tier: ~4 emails/hour. For higher volume, configure custom SMTP
  * at: Supabase Dashboard → Authentication → Email Templates → SMTP.
  */
-export default function ForgotPasswordPage() {
+function ForgotPasswordInner() {
   const searchParams = useSearchParams()
   const slug = searchParams.get('slug') || ''
 
@@ -125,6 +125,28 @@ export default function ForgotPasswordPage() {
         )}
       </div>
     </main>
+  )
+}
+
+/**
+ * Page-level export wraps the inner component in a Suspense boundary —
+ * required because ForgotPasswordInner uses `useSearchParams()` which
+ * forces the page to bail out of static prerendering. Without Suspense
+ * the Vercel build fails at "Generating static pages" for this route.
+ */
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense
+      fallback={
+        <main style={page}>
+          <div style={{ ...card, textAlign: 'center' }}>
+            <p style={{ margin: 0, color: 'rgba(42,33,24,0.6)', fontSize: 13 }}>Loading…</p>
+          </div>
+        </main>
+      }
+    >
+      <ForgotPasswordInner />
+    </Suspense>
   )
 }
 
