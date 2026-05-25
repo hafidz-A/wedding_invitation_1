@@ -17,10 +17,22 @@ const DEVICE_CONFIG: Record<DeviceMode, { label: string; icon: string; width: nu
 
 export default function PreviewPane({ slug }: Props) {
   const { lastSavedAt, isDirty } = useEditor()
-  const [manualRefresh, setManualRefresh] = useState(0)
+  // Single tick that bumps on ANY interaction (device switch OR refresh).
+  // Used as the iframe React `key`, so the iframe fully unmounts +
+  // remounts → page reloads from the very top, GSAP timelines reset,
+  // music popup re-arms, etc. Clicking the SAME device twice also
+  // increments the tick so the user can use it as a "scroll to top".
+  const [iframeKey, setIframeKey] = useState(0)
   const [device, setDevice] = useState<DeviceMode>('desktop')
-  const v = `${lastSavedAt || 'init'}-${manualRefresh}`
+  const v = `${lastSavedAt || 'init'}-${iframeKey}`
   const cfg = DEVICE_CONFIG[device]
+
+  const switchDevice = (d: DeviceMode) => {
+    if (d !== device) setDevice(d)
+    setIframeKey((n) => n + 1)
+  }
+
+  const refreshPreview = () => setIframeKey((n) => n + 1)
 
   return (
     <section style={wrap}>
@@ -34,9 +46,9 @@ export default function PreviewPane({ slug }: Props) {
             <button
               key={d}
               type="button"
-              onClick={() => setDevice(d)}
+              onClick={() => switchDevice(d)}
               style={d === device ? deviceBtnActive : deviceBtn}
-              title={DEVICE_CONFIG[d].label}
+              title={`${DEVICE_CONFIG[d].label} — klik untuk refresh preview`}
             >
               <span>{DEVICE_CONFIG[d].icon}</span>
               <span>{DEVICE_CONFIG[d].label}</span>
@@ -45,7 +57,7 @@ export default function PreviewPane({ slug }: Props) {
         </div>
         <button
           type="button"
-          onClick={() => setManualRefresh((n) => n + 1)}
+          onClick={refreshPreview}
           style={refreshBtn}
           title="Refresh preview"
         >↻</button>
