@@ -8,6 +8,7 @@ import GlobalBackground from '@/components/GlobalBackground.jsx'
 import { BotanicalBorder } from '@/components/BotanicalBorder.tsx'
 import SectionRenderer from '@/renderers/SectionRenderer.jsx'
 import FloatingNavbar from '@/components/FloatingNavbar.jsx'
+import SmoothScroll from '@/components/SmoothScroll'
 
 // MusicPopup is mounted as an OVERLAY when config.music.url is set —
 // independent of the sections list, configured in the dashboard "Music" tab.
@@ -28,6 +29,7 @@ export default function InvitationView({ config, slug }: { config: any; slug: st
 
   return (
     <ThemeProvider theme={undefined}>
+      <SmoothScroll />
       {/* @ts-ignore — gifUrl prop from JSX component */}
       <GlobalBackground gifUrl={bgGif} />
       <BotanicalBorder />

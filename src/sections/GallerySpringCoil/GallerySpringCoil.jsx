@@ -386,6 +386,19 @@ const COMPONENT_STYLES = `
   .gsc-coilCard {
     --gsc-card-w: 131px !important;
     --gsc-card-h: 165px !important;
+    /* On mobile we don't animate the filter per frame (handled in JS),
+       so tell the browser not to allocate a filter compositing layer. */
+    will-change: transform, opacity;
+  }
+
+  /* Simpler box-shadow for the active card on mobile — the desktop
+     version stacks 3 shadows including a 90px coloured glow, which is
+     expensive to paint inside the scroll loop. Same visual emphasis,
+     fraction of the cost. */
+  .gsc-coilCard[data-front="true"] .gsc-coilFrame {
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.7),
+      0 8px 24px rgba(0,0,0,0.22);
   }
 
   .gsc-stage {
@@ -646,6 +659,15 @@ export default function GallerySpringCoil({
     let raf = 0
     let inView = false
 
+    // Performance flags computed once. On mobile we skip the per-frame
+    // CSS filter:blur — it's the single most expensive op in the loop
+    // (forces fragment re-paint of the whole card every frame). The
+    // visual loss is minor; the FPS gain on phones is huge.
+    const isMobile =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 760px)').matches
+    const useBlur = !isMobile
+
     /**
      * Pure transform computation — no scheduling. Reads scrollProgress
      * and mouse refs, writes inline styles on coilRef + each card.
@@ -691,7 +713,10 @@ export default function GallerySpringCoil({
         const blur = depthT * config.depthBlurMax * (1 - easedFrontness)
 
         card.style.opacity = opacity.toFixed(3)
-        card.style.filter = `blur(${blur.toFixed(2)}px)`
+        // Skip blur on mobile entirely; on desktop only re-write when it
+        // changes meaningfully (saves the GPU from re-rasterising the
+        // card sub-tree on every single frame).
+        if (useBlur) card.style.filter = `blur(${blur.toFixed(2)}px)`
         card.style.transform = [
           `rotateY(${staticAngle}deg)`,
           `translateZ(${config.radius}px)`,
