@@ -207,6 +207,9 @@ if (!config) config = {
       enabled: true,
       theme: 'darkLuxury',
       props: {
+        // Favicon initials shown in browser tab — couple can edit
+        // this from the Hero section in the editor.
+        monogram,
         coupleName,
         brideName,
         groomName,
