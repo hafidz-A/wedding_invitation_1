@@ -6,19 +6,21 @@ import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 
 /**
- * /verify-signup — TOKEN-based email verification after signUp.
+ * /verify-signup — TOKEN-based email verification (OTP flow).
  *
  * User flow:
- *   1. User submits /signup → Supabase Auth creates the account + emails OTP
+ *   1. /signup calls supabase.auth.signInWithOtp({ email }) — Supabase
+ *      emails the {{ .Token }} 6-digit code via the "Magic Link" template
  *   2. Browser auto-routes here with ?email=… prefilled
  *   3. User enters the 6-digit code from the email
- *   4. Page calls supabase.auth.verifyOtp({ email, token, type: 'signup' })
+ *   4. Page calls supabase.auth.verifyOtp({ email, token, type: 'email' })
  *      → that exchanges the code for an active session
  *   5. Once signed in, redirect to /onboarding to finish the 5-field wizard
  *
  * Supabase Dashboard config required:
- *   Authentication → Email Templates → "Confirm signup" →
- *   Body must include {{ .Token }} (the 6-digit code). Example:
+ *   Authentication → Email Templates → "Magic Link" → body must include
+ *   {{ .Token }} (the 6-digit code), not just the URL link.
+ *   Example body:
  *
  *     <p>Kode verifikasi Anda:</p>
  *     <h2>{{ .Token }}</h2>
@@ -58,7 +60,7 @@ function VerifySignupInner() {
     const { error: verifyErr } = await supabase.auth.verifyOtp({
       email: email.trim(),
       token: token.trim(),
-      type: 'signup',
+      type: 'email',
     })
 
     if (verifyErr) {
@@ -81,9 +83,11 @@ function VerifySignupInner() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
-    const { error: resendErr } = await supabase.auth.resend({
-      type: 'signup',
+    // Re-trigger signInWithOtp (rather than .resend()) since we're in the
+    // OTP flow, not the signUp confirmation flow.
+    const { error: resendErr } = await supabase.auth.signInWithOtp({
       email: email.trim(),
+      options: { shouldCreateUser: true },
     })
     setResending(false)
     if (resendErr) {

@@ -6,24 +6,27 @@ import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 /**
- * /signup — public sign-up form. Uses Supabase Auth signUp() which (when
- * email confirmation is enabled) sends an email containing the {{ .Token }}
- * 6-digit code. After submitting, we push the user to /verify-signup where
- * they paste the code — mirrors the existing /forgot-password → /reset-password
- * token flow.
+ * /signup — email-only OTP signup.
+ *
+ * Replaces the old email+password+repeat form with a single email field.
+ * Supabase Auth's signInWithOtp() works for BOTH new and existing users:
+ *   - If the email is new → creates an auth.users row and sends OTP
+ *   - If the email exists → just sends OTP for login
+ *
+ * Why OTP instead of signUp() with password:
+ *   - Uses the "Magic Link" / OTP email template (separate rate-limit bucket
+ *     from sign-up confirmation emails on Supabase's built-in SMTP)
+ *   - Simpler UX — no password to remember during onboarding
+ *   - The couple can set a password later via /forgot-password if they want
  *
  * Supabase Dashboard config required:
- *   Authentication → Email Templates → "Confirm signup" → make sure the
- *   body includes {{ .Token }} (the 6-digit code), not only the URL link.
- *   Example:
- *     <p>Kode verifikasi Anda:</p>
- *     <h2>{{ .Token }}</h2>
+ *   Authentication → Email Templates → "Magic Link" → make sure the template
+ *   body includes {{ .Token }} (the 6-digit code). Default template uses
+ *   {{ .ConfirmationURL }} which is the link version — we want the code.
  */
 export default function SignupForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [repeat, setRepeat] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -31,16 +34,8 @@ export default function SignupForm() {
     e.preventDefault()
     setError('')
 
-    if (!email.trim() || !password) {
-      setError('Mohon isi email dan password')
-      return
-    }
-    if (password.length < 8) {
-      setError('Password minimal 8 karakter')
-      return
-    }
-    if (password !== repeat) {
-      setError('Password dan ulangan password tidak sama')
+    if (!email.trim()) {
+      setError('Mohon isi email')
       return
     }
 
@@ -50,24 +45,28 @@ export default function SignupForm() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { error: otpError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      password,
-      // No emailRedirectTo — we use OTP token flow, not URL confirmation.
+      options: {
+        shouldCreateUser: true,
+        // No emailRedirectTo — we want the token flow, not the magic-link URL
+      },
     })
 
-    if (signUpError) {
-      const msg = signUpError.message.toLowerCase()
-      if (msg.includes('already') || msg.includes('registered')) {
-        setError('Email ini sudah terdaftar. Coba login lewat halaman dashboard.')
+    if (otpError) {
+      const msg = otpError.message.toLowerCase()
+      if (msg.includes('rate limit') || msg.includes('too many')) {
+        setError(
+          'Terlalu banyak permintaan email. Tunggu beberapa menit lalu coba lagi, ' +
+          'atau setup custom SMTP di Supabase.',
+        )
       } else {
-        setError(signUpError.message)
+        setError(otpError.message)
       }
       setSubmitting(false)
       return
     }
 
-    // Push to verification page with email prefilled so user just types the code.
     router.push(`/verify-signup?email=${encodeURIComponent(email.trim())}`)
   }
 
@@ -76,9 +75,10 @@ export default function SignupForm() {
       <form onSubmit={onSubmit} style={card}>
         <header style={{ marginBottom: 4 }}>
           <p style={kicker}>Buat Undangan</p>
-          <h1 style={h1}>Daftar akun</h1>
+          <h1 style={h1}>Daftar dengan email</h1>
           <p style={muted}>
-            Buat akun untuk mulai menyusun undangan pernikahan kamu.
+            Cukup masukkan email kamu. Kami kirim <b>kode 6 digit</b> ke email
+            itu — ketik kode-nya untuk verifikasi & masuk.
           </p>
         </header>
 
@@ -95,35 +95,10 @@ export default function SignupForm() {
           />
         </label>
 
-        <label style={field}>
-          <span style={lbl}>Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            placeholder="Minimal 8 karakter"
-            style={input}
-          />
-        </label>
-
-        <label style={field}>
-          <span style={lbl}>Ulangi password</span>
-          <input
-            type="password"
-            value={repeat}
-            onChange={(e) => setRepeat(e.target.value)}
-            required
-            placeholder="Sama persis dengan di atas"
-            style={input}
-          />
-        </label>
-
         {error && <p style={errorStyle}>{error}</p>}
 
         <button type="submit" disabled={submitting} style={submitBtn}>
-          {submitting ? 'Mendaftar…' : 'Daftar & kirim verifikasi'}
+          {submitting ? 'Mengirim kode…' : 'Kirim kode verifikasi'}
         </button>
 
         <p style={{ ...muted, fontSize: 13, textAlign: 'center', marginTop: 14 }}>
