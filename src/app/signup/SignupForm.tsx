@@ -1,16 +1,31 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
+/**
+ * /signup — public sign-up form. Uses Supabase Auth signUp() which (when
+ * email confirmation is enabled) sends an email containing the {{ .Token }}
+ * 6-digit code. After submitting, we push the user to /verify-signup where
+ * they paste the code — mirrors the existing /forgot-password → /reset-password
+ * token flow.
+ *
+ * Supabase Dashboard config required:
+ *   Authentication → Email Templates → "Confirm signup" → make sure the
+ *   body includes {{ .Token }} (the 6-digit code), not only the URL link.
+ *   Example:
+ *     <p>Kode verifikasi Anda:</p>
+ *     <h2>{{ .Token }}</h2>
+ */
 export default function SignupForm() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [repeat, setRepeat] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -35,19 +50,13 @@ export default function SignupForm() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
     const { error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: {
-        // Supabase appends `?code=...` to this URL. After successful
-        // verification it lands the user inside /onboarding already signed in.
-        emailRedirectTo: `${origin}/onboarding`,
-      },
+      // No emailRedirectTo — we use OTP token flow, not URL confirmation.
     })
 
     if (signUpError) {
-      // Most common: "User already registered" — explain in Indonesian.
       const msg = signUpError.message.toLowerCase()
       if (msg.includes('already') || msg.includes('registered')) {
         setError('Email ini sudah terdaftar. Coba login lewat halaman dashboard.')
@@ -58,42 +67,8 @@ export default function SignupForm() {
       return
     }
 
-    setSuccess(true)
-    setSubmitting(false)
-  }
-
-  if (success) {
-    return (
-      <main style={panel}>
-        <div style={card}>
-          <p style={kicker}>Cek email Anda</p>
-          <h1 style={h1}>Sebentar lagi…</h1>
-          <p style={muted}>
-            Kami baru saja mengirim link verifikasi ke <b>{email}</b>. Klik link
-            di email untuk melanjutkan setup undangan kamu.
-          </p>
-          <p style={{ ...muted, fontSize: 13, marginTop: 16 }}>
-            Tidak terima email dalam 2 menit? Cek folder Spam, atau{' '}
-            <button
-              type="button"
-              onClick={() => setSuccess(false)}
-              style={{
-                background: 'none',
-                border: 0,
-                color: '#E8553E',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-                padding: 0,
-                fontSize: 'inherit',
-              }}
-            >
-              coba email lain
-            </button>
-            .
-          </p>
-        </div>
-      </main>
-    )
+    // Push to verification page with email prefilled so user just types the code.
+    router.push(`/verify-signup?email=${encodeURIComponent(email.trim())}`)
   }
 
   return (
