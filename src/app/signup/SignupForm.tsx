@@ -6,25 +6,45 @@ import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 /**
- * /signup — email-only OTP signup.
+ * Email-only OTP form — shared between /signup and /login.
  *
- * Replaces the old email+password+repeat form with a single email field.
- * Supabase Auth's signInWithOtp() works for BOTH new and existing users:
- *   - If the email is new → creates an auth.users row and sends OTP
- *   - If the email exists → just sends OTP for login
+ * signInWithOtp() works for both:
+ *   - New email   → creates auth.users row + sends OTP
+ *   - Known email → just sends OTP for login
  *
- * Why OTP instead of signUp() with password:
- *   - Uses the "Magic Link" / OTP email template (separate rate-limit bucket
- *     from sign-up confirmation emails on Supabase's built-in SMTP)
- *   - Simpler UX — no password to remember during onboarding
- *   - The couple can set a password later via /forgot-password if they want
+ * Copy switches via the `variant` prop. After verify, the /verify-signup
+ * page hands off to /onboarding which is idempotent — first-time users
+ * fill the wizard, returning users get auto-redirected to /<slug>/dashboard.
  *
  * Supabase Dashboard config required:
- *   Authentication → Email Templates → "Magic Link" → make sure the template
- *   body includes {{ .Token }} (the 6-digit code). Default template uses
- *   {{ .ConfirmationURL }} which is the link version — we want the code.
+ *   Authentication → Email Templates → "Magic Link" → body must include
+ *   {{ .Token }} (the 6-digit code). Default URL-link template won't work.
  */
-export default function SignupForm() {
+type Variant = 'signup' | 'login'
+
+const COPY: Record<Variant, { kicker: string; title: string; body: string; submit: string; altPrompt: string; altLink: string; altHref: string }> = {
+  signup: {
+    kicker: 'Buat Undangan',
+    title: 'Daftar dengan email',
+    body: 'Cukup masukkan email kamu. Kami kirim kode 6 digit untuk verifikasi.',
+    submit: 'Kirim kode verifikasi',
+    altPrompt: 'Sudah punya akun?',
+    altLink: 'Login di sini',
+    altHref: '/login',
+  },
+  login: {
+    kicker: 'Masuk',
+    title: 'Login dengan email',
+    body: 'Masukkan email yang kamu daftar. Kami kirim kode 6 digit untuk masuk.',
+    submit: 'Kirim kode login',
+    altPrompt: 'Belum punya akun?',
+    altLink: 'Daftar di sini',
+    altHref: '/signup',
+  },
+}
+
+export default function SignupForm({ variant = 'signup' }: { variant?: Variant } = {}) {
+  const copy = COPY[variant]
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -74,12 +94,9 @@ export default function SignupForm() {
     <main style={panel}>
       <form onSubmit={onSubmit} style={card}>
         <header style={{ marginBottom: 4 }}>
-          <p style={kicker}>Buat Undangan</p>
-          <h1 style={h1}>Daftar dengan email</h1>
-          <p style={muted}>
-            Cukup masukkan email kamu. Kami kirim <b>kode 6 digit</b> ke email
-            itu — ketik kode-nya untuk verifikasi & masuk.
-          </p>
+          <p style={kicker}>{copy.kicker}</p>
+          <h1 style={h1}>{copy.title}</h1>
+          <p style={muted}>{copy.body}</p>
         </header>
 
         <label style={field}>
@@ -98,13 +115,18 @@ export default function SignupForm() {
         {error && <p style={errorStyle}>{error}</p>}
 
         <button type="submit" disabled={submitting} style={submitBtn}>
-          {submitting ? 'Mengirim kode…' : 'Kirim kode verifikasi'}
+          {submitting ? 'Mengirim kode…' : copy.submit}
         </button>
 
         <p style={{ ...muted, fontSize: 13, textAlign: 'center', marginTop: 14 }}>
-          Sudah punya akun?{' '}
-          <Link href="/" style={{ color: '#E8553E', textDecoration: 'underline' }}>
-            Kembali ke beranda
+          {copy.altPrompt}{' '}
+          <Link href={copy.altHref} style={{ color: '#E8553E', textDecoration: 'underline' }}>
+            {copy.altLink}
+          </Link>
+        </p>
+        <p style={{ ...muted, fontSize: 13, textAlign: 'center', marginTop: 4 }}>
+          <Link href="/" style={{ color: 'rgba(42,33,24,0.55)', textDecoration: 'underline' }}>
+            ← Kembali ke beranda
           </Link>
         </p>
       </form>

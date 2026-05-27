@@ -81,7 +81,21 @@ export default function HomePage() {
             Book Invitation Wedding →
           </Link>
         </div>
-        <p style={{ marginTop: 40, fontSize: 13, color: 'rgba(42,33,24,0.55)' }}>
+        <p style={{ marginTop: 28, fontSize: 13, color: 'rgba(42,33,24,0.6)' }}>
+          Sudah punya akun?{' '}
+          <Link
+            href="/login"
+            style={{
+              color: '#2A2118',
+              fontWeight: 600,
+              textDecoration: 'underline',
+              textUnderlineOffset: 4,
+            }}
+          >
+            Login di sini →
+          </Link>
+        </p>
+        <p style={{ marginTop: 16, fontSize: 13, color: 'rgba(42,33,24,0.55)' }}>
           Try the demo invitation at <code>/rizky-amara</code>
         </p>
       </div>
