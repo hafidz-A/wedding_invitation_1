@@ -1,0 +1,97 @@
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import OnboardingForm from './OnboardingForm'
+
+/**
+ * Onboarding wizard — runs after a freshly-verified user lands here from
+ * the email verification link. Server-side:
+ *
+ *   1. Confirm an authenticated session exists. If not → bounce to /signup.
+ *   2. Check whether this user already owns an invitation. If yes → redirect
+ *      to /<existing-slug>/dashboard (idempotent: refreshing this URL after
+ *      onboarding is harmless).
+ *   3. Render the 5-field form.
+ */
+export default async function OnboardingPage() {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return (
+      <main style={panel}>
+        <div style={card}>
+          <p style={kicker}>Sesi tidak ditemukan</p>
+          <h1 style={h1}>Silakan login dulu</h1>
+          <p style={muted}>
+            Sepertinya link verifikasi email kamu sudah kedaluwarsa, atau kamu
+            membuka halaman ini tanpa daftar dulu.
+          </p>
+          <Link
+            href="/signup"
+            style={{
+              display: 'inline-block',
+              marginTop: 16,
+              padding: '12px 24px',
+              background: '#2A2118',
+              color: '#F5EFE3',
+              borderRadius: 999,
+              textDecoration: 'none',
+              fontSize: 12,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Kembali ke pendaftaran
+          </Link>
+        </div>
+      </main>
+    )
+  }
+
+  // Idempotency: if this user already has an invitation, jump straight there.
+  const admin = createSupabaseAdminClient()
+  const { data: existing } = (await admin
+    .from('invitations')
+    .select('slug')
+    .eq('owner_user_id', user.id)
+    .maybeSingle()) as { data: { slug: string } | null }
+
+  if (existing?.slug) {
+    redirect(`/${existing.slug}/dashboard`)
+  }
+
+  return <OnboardingForm email={user.email ?? ''} />
+}
+
+const panel: React.CSSProperties = {
+  minHeight: '100vh',
+  display: 'grid',
+  placeItems: 'center',
+  background: 'linear-gradient(135deg, #F5EFE3 0%, #E8DCC0 100%)',
+  padding: 24,
+  fontFamily: 'var(--font-body, system-ui)',
+}
+const card: React.CSSProperties = {
+  maxWidth: 440,
+  padding: 36,
+  background: 'rgba(255,255,255,0.95)',
+  borderRadius: 20,
+  boxShadow: '0 20px 60px rgba(42,33,24,0.12)',
+}
+const kicker: React.CSSProperties = {
+  textTransform: 'uppercase',
+  letterSpacing: '0.32em',
+  fontSize: 11,
+  color: '#E8553E',
+  margin: '0 0 8px',
+}
+const h1: React.CSSProperties = {
+  fontFamily: 'var(--font-display, serif)',
+  fontStyle: 'italic',
+  fontSize: 32,
+  margin: 0,
+  color: '#2A2118',
+}
+const muted: React.CSSProperties = { margin: '8px 0 0', color: '#5C4A3A', lineHeight: 1.6 }

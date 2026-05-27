@@ -46,7 +46,7 @@ export default function HomePage() {
           A premium digital wedding invitation, designed cinematic from first scroll to RSVP.
           Pick a template, share your dates, send the link.
         </p>
-        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
           <Link
             href="/rizky-amara"
             style={{
@@ -62,6 +62,23 @@ export default function HomePage() {
             }}
           >
             View live demo →
+          </Link>
+          <Link
+            href="/signup"
+            style={{
+              padding: '16px 32px',
+              borderRadius: 999,
+              background: '#E8553E',
+              color: '#FFF8EE',
+              fontSize: 14,
+              fontWeight: 600,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              textDecoration: 'none',
+              boxShadow: '0 8px 24px rgba(232,85,62,0.25)',
+            }}
+          >
+            Book Invitation Wedding →
           </Link>
         </div>
         <p style={{ marginTop: 40, fontSize: 13, color: 'rgba(42,33,24,0.55)' }}>
