@@ -5,48 +5,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { parseGuestImport } from '@/lib/guests/parse-import'
 import { normalizePhone } from '@/lib/guests/phone'
-import { encryptField, decryptField } from '@/lib/guests/crypto'
-
-/** App-shape row — what the client sees. Always plaintext. */
-export interface GuestRow {
-  id: string
-  invitation_id: string
-  name: string
-  phone_e164: string | null
-  group_label: string | null
-  notes: string | null
-  sent_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-/** Raw DB row — encrypted columns are base64 strings. */
-interface GuestRowDb {
-  id: string
-  invitation_id: string
-  name_enc: string
-  phone_enc: string | null
-  group_label: string | null
-  notes_enc: string | null
-  sent_at: string | null
-  created_at: string
-  updated_at: string
-}
-
-/** Decrypt a DB row into the app-shape GuestRow. */
-export function fromDbRow(row: GuestRowDb): GuestRow {
-  return {
-    id: row.id,
-    invitation_id: row.invitation_id,
-    name: decryptField(row.name_enc) ?? '',
-    phone_e164: decryptField(row.phone_enc),
-    group_label: row.group_label,
-    notes: decryptField(row.notes_enc),
-    sent_at: row.sent_at,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  }
-}
+import { encryptField } from '@/lib/guests/crypto'
+import { fromDbRow, type GuestRow, type GuestRowDb } from './types'
 
 /**
  * Verify the calling user owns the invitation for this slug, then return

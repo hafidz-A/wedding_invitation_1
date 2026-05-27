@@ -2,7 +2,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import LoginForm from './LoginForm'
 import DashboardClient from './DashboardClient'
-import { fromDbRow } from './guests/actions'
+import { fromDbRow } from './guests/types'
 
 interface PageProps {
   params: { slug: string }

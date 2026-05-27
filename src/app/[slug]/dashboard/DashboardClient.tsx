@@ -9,7 +9,7 @@ import MusicTab from './MusicTab'
 import BackgroundTab from './BackgroundTab'
 import NotesTab, { type NoteRow } from './NotesTab'
 import GuestsTab from './GuestsTab'
-import { type GuestRow } from './guests/actions'
+import { type GuestRow } from './guests/types'
 import styles from './dashboard.module.css'
 
 /**

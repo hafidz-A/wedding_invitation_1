@@ -9,8 +9,8 @@ import {
   deleteGuest,
   markGuestSent,
   unmarkGuestSent,
-  type GuestRow,
 } from './guests/actions'
+import { type GuestRow } from './guests/types'
 import GuestImportModal from './GuestImportModal'
 
 const DEFAULT_TEMPLATE =
