@@ -9,9 +9,11 @@ import {
   deleteGuest,
   markGuestSent,
   unmarkGuestSent,
+  updateInviteMessageTemplate,
 } from './guests/actions'
 import { type GuestRow } from './guests/types'
 import GuestImportModal from './GuestImportModal'
+import GuestEditModal from './GuestEditModal'
 
 const DEFAULT_TEMPLATE =
   'Halo {{name}}, dengan hormat kami mengundang Anda ke acara pernikahan kami. ' +
@@ -29,9 +31,31 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'sent' | 'pending'>('all')
   const [showImport, setShowImport] = useState(false)
+  const [editingGuest, setEditingGuest] = useState<GuestRow | null>(null)
   const [pending, startTransition] = useTransition()
 
-  const template = messageTemplate || DEFAULT_TEMPLATE
+  // Editable global template state — initialized from invitation config,
+  // saved server-side via updateInviteMessageTemplate when "Simpan" clicked.
+  const [template, setTemplate] = useState(messageTemplate || DEFAULT_TEMPLATE)
+  const [templateOpen, setTemplateOpen] = useState(false)
+  const [templateSaving, setTemplateSaving] = useState(false)
+  const [templateSaved, setTemplateSaved] = useState(false)
+  const [templateError, setTemplateError] = useState<string | null>(null)
+
+  async function saveTemplate() {
+    setTemplateSaving(true)
+    setTemplateError(null)
+    setTemplateSaved(false)
+    const result = await updateInviteMessageTemplate(slug, template)
+    setTemplateSaving(false)
+    if (!result.ok) {
+      setTemplateError(result.error || 'Gagal menyimpan')
+      return
+    }
+    setTemplateSaved(true)
+    setTimeout(() => setTemplateSaved(false), 2500)
+    router.refresh()
+  }
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim()
@@ -51,7 +75,11 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
   const pendingCount = guests.length - sentCount
 
   const handleSend = (g: GuestRow) => {
-    const message = renderMessageTemplate(template, { name: g.name, url: publicUrl })
+    // Per-guest override via notes_enc, fallback to global template.
+    // Both are run through renderMessageTemplate so {{name}} / {{url}}
+    // get substituted in either case.
+    const source = g.notes && g.notes.trim() ? g.notes : template
+    const message = renderMessageTemplate(source, { name: g.name, url: publicUrl })
     const url = buildWhatsAppUrl({ phoneE164: g.phone_e164, message })
     startTransition(async () => {
       try {
@@ -92,12 +120,72 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
             {guests.length} tamu · {sentCount} sudah dikirim · {pendingCount} pending
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setTemplateOpen((o) => !o)}
+            style={{
+              ...ghostBtn,
+              background: templateOpen ? '#2A2118' : 'transparent',
+              color: templateOpen ? '#fff' : '#2A2118',
+            }}
+          >
+            ✎ Pesan Default
+          </button>
           <button type="button" onClick={() => setShowImport(true)} style={ghostBtn}>
             + Import
           </button>
         </div>
       </header>
+
+      {templateOpen && (
+        <div
+          style={{
+            marginBottom: 18,
+            padding: 16,
+            background: 'rgba(232,85,62,0.06)',
+            border: '1px solid rgba(232,85,62,0.18)',
+            borderRadius: 12,
+          }}
+        >
+          <p style={{ margin: '0 0 10px', fontSize: 13, color: '#5C4A3A', lineHeight: 1.6 }}>
+            Pesan default ini dipakai untuk <b>semua tamu</b> kecuali tamu yang punya pesan custom sendiri (di-edit per baris).
+            Tersedia placeholder: <code>{'{{name}}'}</code> (nama tamu) dan <code>{'{{url}}'}</code> (link undangan).
+          </p>
+          <textarea
+            value={template}
+            onChange={(e) => setTemplate(e.target.value)}
+            rows={6}
+            style={{
+              ...input,
+              width: '100%',
+              boxSizing: 'border-box',
+              fontFamily: 'inherit',
+              resize: 'vertical',
+              minHeight: 100,
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginTop: 10 }}>
+            {templateError && (
+              <span style={{ fontSize: 13, color: '#E8553E', marginRight: 'auto' }}>{templateError}</span>
+            )}
+            {templateSaved && !templateError && (
+              <span style={{ fontSize: 13, color: '#2D8C4E', marginRight: 'auto' }}>✓ Tersimpan</span>
+            )}
+            <button
+              type="button"
+              onClick={() => setTemplate(messageTemplate || DEFAULT_TEMPLATE)}
+              style={ghostBtn}
+              disabled={templateSaving}
+            >
+              Reset
+            </button>
+            <button type="button" onClick={saveTemplate} disabled={templateSaving} style={primaryBtn}>
+              {templateSaving ? 'Menyimpan…' : 'Simpan'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <form
         action={handleAdd}
@@ -174,8 +262,23 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
                         background: 'rgba(45,140,78,0.15)',
                         color: '#2D8C4E',
                       }}
+                      title={new Date(g.sent_at).toLocaleString('id-ID', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     >
-                      Terkirim {new Date(g.sent_at).toLocaleDateString('id-ID')}
+                      Terkirim{' '}
+                      {new Date(g.sent_at).toLocaleString('id-ID', {
+                        day: 'numeric',
+                        month: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </span>
                   ) : (
                     <span
@@ -188,8 +291,21 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
                       Pending
                     </span>
                   )}
+                  {g.notes && g.notes.trim() && (
+                    <span
+                      style={{
+                        ...badge,
+                        background: 'rgba(232,85,62,0.10)',
+                        color: '#E8553E',
+                        marginLeft: 6,
+                      }}
+                      title={`Pesan custom: ${g.notes}`}
+                    >
+                      ✎ custom
+                    </span>
+                  )}
                 </td>
-                <td style={{ ...td, textAlign: 'right' }}>
+                <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <button
                     type="button"
                     onClick={() => handleSend(g)}
@@ -197,6 +313,14 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
                     style={primaryBtn}
                   >
                     {g.phone_e164 ? 'Kirim WA' : 'Pilih kontak'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingGuest(g)}
+                    style={{ ...ghostBtn, marginLeft: 6 }}
+                    title="Edit tamu (nama, nomor, pesan custom)"
+                  >
+                    ✎
                   </button>
                   {g.sent_at && (
                     <button
@@ -239,6 +363,17 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
           slug={slug}
           onClose={() => {
             setShowImport(false)
+            router.refresh()
+          }}
+        />
+      )}
+
+      {editingGuest && (
+        <GuestEditModal
+          slug={slug}
+          guest={editingGuest}
+          onClose={() => {
+            setEditingGuest(null)
             router.refresh()
           }}
         />

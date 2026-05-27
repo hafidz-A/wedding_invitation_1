@@ -128,3 +128,41 @@ export async function unmarkGuestSent(slug: string, id: string): Promise<void> {
   if (error) throw new Error(error.message)
   revalidatePath(`/${slug}/dashboard`)
 }
+
+/**
+ * Update the couple's global WhatsApp invite message template.
+ * Stored under invitation.config.inviteMessageTemplate. The template
+ * supports {{name}} and {{url}} placeholders.
+ */
+export async function updateInviteMessageTemplate(
+  slug: string,
+  template: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const server = createSupabaseServerClient()
+    const { data: { user } } = await server.auth.getUser()
+    if (!user) return { ok: false, error: 'Not authenticated' }
+
+    const admin = createSupabaseAdminClient()
+    const { data: inv } = (await admin
+      .from('invitations')
+      .select('id, owner_user_id, config')
+      .eq('slug', slug)
+      .maybeSingle()) as {
+      data: { id: string; owner_user_id: string; config: Record<string, any> } | null
+    }
+    if (!inv) return { ok: false, error: 'Invitation not found' }
+    if (inv.owner_user_id !== user.id) return { ok: false, error: 'Forbidden' }
+
+    const nextConfig = { ...inv.config, inviteMessageTemplate: template }
+    const { error } = await (admin.from('invitations') as any)
+      .update({ config: nextConfig })
+      .eq('id', inv.id)
+    if (error) return { ok: false, error: error.message }
+
+    revalidatePath(`/${slug}/dashboard`)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Unexpected error' }
+  }
+}
