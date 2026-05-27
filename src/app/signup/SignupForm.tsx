@@ -4,22 +4,24 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { createAccount } from './actions'
 
 /**
- * /signup — email + password account creation, NO email verification.
+ * /signup — email + password + repeat. Supabase Auth signUp() sends an
+ * email confirmation. All Auth emails route through the Custom SMTP
+ * (Resend) configured in Supabase Dashboard → Auth → SMTP, so the rate
+ * limit is the Resend quota (3000/month) rather than Supabase's 2/hour
+ * built-in cap.
  *
- * Why we skip email verification (re: Supabase rate-limit pain):
- *   - Built-in SMTP has a strict 2 emails/hour cap on free tier
- *   - The wedding-SaaS misuse risk is low — we accept the trade-off
- *   - /forgot-password still requires real email ownership for recovery
+ * After signUp succeeds, user is bounced to /verify-signup to enter the
+ * 6-digit token from the email (mirrors the /forgot-password →
+ * /reset-password muscle memory).
  *
- * Flow:
- *   1. User fills email + password + repeat
- *   2. Server action `createAccount` creates the auth.users row via the
- *      admin API with email_confirm: true → account immediately usable
- *   3. Client signs in via signInWithPassword to establish a session
- *   4. router.push('/onboarding') → 5-field wizard
+ * Supabase Dashboard config required:
+ *   1. Project Settings → Auth → SMTP Settings → enable Custom SMTP,
+ *      point at smtp.resend.com (see CLAUDE.md / docs for exact values).
+ *   2. Authentication → Email Templates → "Confirm signup" → body must
+ *      include {{ .Token }} (the 6-digit code). Default template uses
+ *      only {{ .ConfirmationURL }} which is the link, not the code.
  */
 export default function SignupForm() {
   const router = useRouter()
@@ -48,32 +50,33 @@ export default function SignupForm() {
 
     setSubmitting(true)
 
-    // Step 1: create the auth.users row (no email sent).
-    const result = await createAccount(email, password)
-    if (!result.ok) {
-      setError(result.error || 'Gagal membuat akun')
-      setSubmitting(false)
-      return
-    }
-
-    // Step 2: sign the user in to establish a session cookie.
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+
+    const { error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
     })
-    if (signInError) {
-      setError('Akun berhasil dibuat tapi gagal auto-login. Coba login manual.')
+
+    if (signUpError) {
+      const msg = signUpError.message.toLowerCase()
+      if (msg.includes('already') || msg.includes('registered')) {
+        setError('Email ini sudah terdaftar. Coba login di /login.')
+      } else if (msg.includes('rate limit') || msg.includes('too many')) {
+        setError(
+          'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi, ' +
+          'atau setup Custom SMTP di Supabase Dashboard.',
+        )
+      } else {
+        setError(signUpError.message)
+      }
       setSubmitting(false)
       return
     }
 
-    // Step 3: ke onboarding (5-field wizard).
-    router.push('/onboarding')
-    router.refresh()
+    router.push(`/verify-signup?email=${encodeURIComponent(email.trim())}`)
   }
 
   return (
@@ -83,7 +86,8 @@ export default function SignupForm() {
           <p style={kicker}>Buat Undangan</p>
           <h1 style={h1}>Daftar akun</h1>
           <p style={muted}>
-            Buat akun untuk mulai menyusun undangan pernikahan kamu.
+            Buat akun untuk mulai menyusun undangan pernikahan kamu. Kami kirim
+            kode 6 digit ke email untuk verifikasi.
           </p>
         </header>
 
@@ -128,7 +132,7 @@ export default function SignupForm() {
         {error && <p style={errorStyle}>{error}</p>}
 
         <button type="submit" disabled={submitting} style={submitBtn}>
-          {submitting ? 'Mendaftar…' : 'Daftar & lanjut isi data'}
+          {submitting ? 'Mendaftar…' : 'Daftar & kirim verifikasi'}
         </button>
 
         <p style={{ ...muted, fontSize: 13, textAlign: 'center', marginTop: 14 }}>
