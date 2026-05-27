@@ -78,11 +78,22 @@ export async function completeOnboarding(input: OnboardingInput): Promise<Onboar
     venue,
   })
 
-  // 6. Insert.
+  // 6. Insert. Several columns are legacy NOT NULL — same shape as
+  //    scripts/create-invitation.mjs uses.
+  //      password_hash → placeholder ('supabase-auth-migrated') during the
+  //        bcrypt-to-Supabase-Auth transition. Real auth lives in
+  //        auth.users. Column will be dropped from schema once migration is
+  //        complete project-wide.
+  //      plan          → all new signups default to "premium" since plan
+  //        tiering is intentionally hidden from this onboarding flow.
+  //      template_id   → start everyone on the default cinematic template.
   const { error } = await (admin.from('invitations') as any).insert({
     slug,
     owner_user_id: user.id,
     email: user.email,
+    password_hash: 'supabase-auth-migrated',
+    plan: 'premium',
+    template_id: 'classic',
     is_published: true,
     config,
   })
