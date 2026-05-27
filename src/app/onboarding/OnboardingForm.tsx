@@ -51,18 +51,22 @@ export default function OnboardingForm({ email }: { email: string }) {
     e.preventDefault()
     setError('')
     startTransition(async () => {
-      try {
-        const result = await completeOnboarding({
-          slug,
-          brideName: bride,
-          groomName: groom,
-          weddingDate: date,
-          venue,
-        })
-        setDone(result)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Gagal membuat undangan')
+      const result = await completeOnboarding({
+        slug,
+        brideName: bride,
+        groomName: groom,
+        weddingDate: date,
+        venue,
+      })
+      if (!result.ok) {
+        setError(result.error || 'Gagal membuat undangan')
+        return
       }
+      setDone({
+        slug: result.slug!,
+        publicUrl: result.publicUrl!,
+        dashboardUrl: result.dashboardUrl!,
+      })
     })
   }
 

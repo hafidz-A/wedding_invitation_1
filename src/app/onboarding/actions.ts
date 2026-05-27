@@ -14,9 +14,11 @@ export interface OnboardingInput {
 }
 
 export interface OnboardingResult {
-  slug: string
-  publicUrl: string
-  dashboardUrl: string
+  ok: boolean
+  slug?: string
+  publicUrl?: string
+  dashboardUrl?: string
+  error?: string
 }
 
 /**
@@ -27,85 +29,96 @@ export interface OnboardingResult {
  *   - Refuses if this user already owns an invitation (1:1 enforcement).
  *   - Builds the full 14-section config with the couple's data substituted.
  *   - Inserts the row with is_published=true so the public URL works immediately.
+ *
+ * Returns a structured result object (not throws) so the client UI can
+ * display the exact error message — Next.js sanitizes thrown errors in
+ * production-like builds, masking the actual cause.
  */
 export async function completeOnboarding(input: OnboardingInput): Promise<OnboardingResult> {
-  // 1. Require an authenticated session.
-  const server = createSupabaseServerClient()
-  const { data: { user } } = await server.auth.getUser()
-  if (!user) throw new Error('Tidak ada sesi login — silakan daftar ulang')
+  try {
+    // 1. Require an authenticated session.
+    const server = createSupabaseServerClient()
+    const { data: { user } } = await server.auth.getUser()
+    if (!user) return { ok: false, error: 'Tidak ada sesi login — silakan daftar ulang' }
 
-  // 2. Validate inputs.
-  const slug = validateSlug(input.slug)
-  const brideName = input.brideName.trim()
-  const groomName = input.groomName.trim()
-  const venue = input.venue.trim()
-  if (!brideName || !groomName) throw new Error('Nama pengantin wajib diisi')
-  if (!venue) throw new Error('Lokasi acara wajib diisi')
-  if (!input.weddingDate) throw new Error('Tanggal acara wajib diisi')
-  const dateMs = Date.parse(input.weddingDate)
-  if (isNaN(dateMs)) throw new Error('Tanggal acara tidak valid')
-
-  const admin = createSupabaseAdminClient()
-
-  // 3. One user owns at most one invitation (matches the auth model
-  //    documented in page.tsx). Block if they already have one.
-  const { data: alreadyOwned } = (await admin
-    .from('invitations')
-    .select('slug')
-    .eq('owner_user_id', user.id)
-    .maybeSingle()) as { data: { slug: string } | null }
-  if (alreadyOwned?.slug) {
-    return {
-      slug: alreadyOwned.slug,
-      publicUrl: `/${alreadyOwned.slug}`,
-      dashboardUrl: `/${alreadyOwned.slug}/dashboard`,
+    // 2. Validate inputs.
+    let slug: string
+    try {
+      slug = validateSlug(input.slug)
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Slug tidak valid' }
     }
-  }
+    const brideName = input.brideName.trim()
+    const groomName = input.groomName.trim()
+    const venue = input.venue.trim()
+    if (!brideName || !groomName) return { ok: false, error: 'Nama pengantin wajib diisi' }
+    if (!venue) return { ok: false, error: 'Lokasi acara wajib diisi' }
+    if (!input.weddingDate) return { ok: false, error: 'Tanggal acara wajib diisi' }
+    const dateMs = Date.parse(input.weddingDate)
+    if (isNaN(dateMs)) return { ok: false, error: 'Tanggal acara tidak valid' }
 
-  // 4. Slug availability check.
-  const { data: taken } = (await admin
-    .from('invitations')
-    .select('id')
-    .eq('slug', slug)
-    .maybeSingle()) as { data: { id: string } | null }
-  if (taken) throw new Error('Slug sudah dipakai. Pilih yang lain.')
+    const admin = createSupabaseAdminClient()
 
-  // 5. Build the full seeded config.
-  const config = buildSeedConfig({
-    brideName,
-    groomName,
-    weddingDate: input.weddingDate,
-    venue,
-  })
+    // 3. One user owns at most one invitation.
+    const { data: alreadyOwned } = (await admin
+      .from('invitations')
+      .select('slug')
+      .eq('owner_user_id', user.id)
+      .maybeSingle()) as { data: { slug: string } | null }
+    if (alreadyOwned?.slug) {
+      return {
+        ok: true,
+        slug: alreadyOwned.slug,
+        publicUrl: `/${alreadyOwned.slug}`,
+        dashboardUrl: `/${alreadyOwned.slug}/dashboard`,
+      }
+    }
 
-  // 6. Insert. Several columns are legacy NOT NULL — same shape as
-  //    scripts/create-invitation.mjs uses.
-  //      password_hash → placeholder ('supabase-auth-migrated') during the
-  //        bcrypt-to-Supabase-Auth transition. Real auth lives in
-  //        auth.users. Column will be dropped from schema once migration is
-  //        complete project-wide.
-  //      plan          → all new signups default to "premium" since plan
-  //        tiering is intentionally hidden from this onboarding flow.
-  //      template_id   → start everyone on the default cinematic template.
-  const { error } = await (admin.from('invitations') as any).insert({
-    slug,
-    owner_user_id: user.id,
-    email: user.email,
-    password_hash: 'supabase-auth-migrated',
-    plan: 'premium',
-    template_id: 'classic',
-    is_published: true,
-    config,
-  })
-  if (error) throw new Error(`Gagal membuat undangan: ${error.message}`)
+    // 4. Slug availability check.
+    const { data: taken } = (await admin
+      .from('invitations')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle()) as { data: { id: string } | null }
+    if (taken) return { ok: false, error: 'Slug sudah dipakai. Pilih yang lain.' }
 
-  revalidatePath(`/${slug}`)
-  revalidatePath(`/${slug}/dashboard`)
+    // 5. Build the full seeded config.
+    const config = buildSeedConfig({
+      brideName,
+      groomName,
+      weddingDate: input.weddingDate,
+      venue,
+    })
 
-  return {
-    slug,
-    publicUrl: `/${slug}`,
-    dashboardUrl: `/${slug}/dashboard`,
+    // 6. Insert. Legacy NOT NULL columns (from the bcrypt-era schema) are
+    //    set the same way scripts/create-invitation.mjs does it.
+    const { error } = await (admin.from('invitations') as any).insert({
+      slug,
+      owner_user_id: user.id,
+      email: user.email,
+      password_hash: 'supabase-auth-migrated',
+      plan: 'premium',
+      template_id: 'classic',
+      is_published: true,
+      config,
+    })
+    if (error) {
+      console.error('Onboarding insert error:', error)
+      return { ok: false, error: `DB error: ${error.message}` }
+    }
+
+    revalidatePath(`/${slug}`)
+    revalidatePath(`/${slug}/dashboard`)
+
+    return {
+      ok: true,
+      slug,
+      publicUrl: `/${slug}`,
+      dashboardUrl: `/${slug}/dashboard`,
+    }
+  } catch (e) {
+    console.error('Onboarding unexpected error:', e)
+    return { ok: false, error: e instanceof Error ? e.message : 'Unexpected error' }
   }
 }
 
