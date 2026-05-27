@@ -1,0 +1,75 @@
+/* EditorRoot responsive layout
+   - Desktop (≥1024px): horizontal split — section list 280px sidebar + main field pane
+   - Tablet (768-1023px): keep horizontal but narrower sidebar (220px)
+   - Mobile (<768px): stack vertically — section list first, field editor below.
+     Section list becomes a horizontally-scrollable strip so the user can still
+     pick sections without a tall list eating the whole screen. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: calc(100vh - 160px);
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 12px 36px rgba(42, 33, 24, 0.06);
+}
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(42, 33, 24, 0.08);
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  flex-wrap: wrap;
+}
+
+.editorRow {
+  display: flex;
+  min-height: 480px;
+  flex: 1;
+}
+
+.sectionList {
+  width: 280px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(42, 33, 24, 0.08);
+  background: rgba(255, 255, 255, 0.55);
+  display: flex;
+  flex-direction: column;
+}
+
+.fieldPane {
+  flex: 1;
+  padding: clamp(16px, 3vw, 28px);
+  overflow: auto;
+  min-width: 0;
+}
+
+@media (max-width: 1023.98px) {
+  .sectionList {
+    width: 220px;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .topBar {
+    padding: 12px 14px;
+  }
+  .editorRow {
+    flex-direction: column;
+    min-height: 0;
+  }
+  .sectionList {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid rgba(42, 33, 24, 0.08);
+    max-height: 220px;
+  }
+  .fieldPane {
+    padding: 16px;
+  }
+}

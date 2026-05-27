@@ -114,8 +114,9 @@ const dialog: React.CSSProperties = {
   padding: 24,
   maxWidth: 560,
   width: '100%',
-  maxHeight: '90vh',
+  maxHeight: 'min(90vh, 90dvh)',
   overflowY: 'auto',
+  WebkitOverflowScrolling: 'touch',
 }
 const header: React.CSSProperties = {
   display: 'flex',

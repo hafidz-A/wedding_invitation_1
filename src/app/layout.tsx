@@ -43,7 +43,24 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
-      <body style={{ margin: 0, background: '#FDF6EC', minHeight: '100%' }}>{children}</body>
+      <body
+        style={{
+          margin: 0,
+          background: '#FDF6EC',
+          minHeight: '100%',
+          // Rigid horizontal lock — duplicated from global.css as inline
+          // styles so iOS Safari (which sometimes ignores html-level
+          // overflow) has belt-and-suspenders coverage. The combination
+          // overflowX + position:relative + width 100% has the strongest
+          // anti-leak guarantee in real-device testing.
+          width: '100%',
+          maxWidth: '100vw',
+          overflowX: 'hidden',
+          position: 'relative',
+        }}
+      >
+        {children}
+      </body>
     </html>
   )
 }

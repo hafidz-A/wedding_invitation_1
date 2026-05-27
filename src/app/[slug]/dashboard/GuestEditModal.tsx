@@ -134,8 +134,13 @@ const dialog: React.CSSProperties = {
   padding: 24,
   maxWidth: 520,
   width: '100%',
-  maxHeight: '90vh',
+  // dvh (dynamic viewport height) accounts for mobile browser chrome that
+  // expands/collapses on scroll AND for the on-screen keyboard reducing
+  // available space — vh on iOS Safari is the full screen height (incl.
+  // hidden URL bar) which makes the modal overflow when the keyboard pops up.
+  maxHeight: 'min(90vh, 90dvh)',
   overflowY: 'auto',
+  WebkitOverflowScrolling: 'touch',
   display: 'flex',
   flexDirection: 'column',
   gap: 14,

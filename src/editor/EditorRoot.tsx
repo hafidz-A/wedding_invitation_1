@@ -6,6 +6,7 @@ import SectionList from './SectionList'
 import FieldEditor from './FieldEditor'
 import SaveBar from './SaveBar'
 import PreviewPane from './PreviewPane'
+import styles from './EditorRoot.module.css'
 
 interface Props {
   slug: string
@@ -23,10 +24,8 @@ export default function EditorRoot({ slug, initialConfig, initialIsPublished }: 
 
   return (
     <EditorProvider slug={slug} initialConfig={safeConfig}>
-      <div style={wrap}>
-
-        {/* ── Top bar ── */}
-        <div style={topBar}>
+      <div className={styles.wrap}>
+        <div className={styles.topBar}>
           <button
             type="button"
             onClick={() => setPreviewOpen((p) => !p)}
@@ -38,54 +37,19 @@ export default function EditorRoot({ slug, initialConfig, initialIsPublished }: 
           <SaveBar slug={slug} initialIsPublished={initialIsPublished} />
         </div>
 
-        {/* ── Editor row: section list + field editor ── */}
-        <div style={editorRow}>
-          <SectionList slug={slug} />
-          <main style={fieldPane}>
+        <div className={styles.editorRow}>
+          <div className={styles.sectionList}>
+            <SectionList slug={slug} />
+          </div>
+          <main className={styles.fieldPane}>
             <FieldEditor slug={slug} />
           </main>
         </div>
 
-        {/* ── Preview at bottom ── */}
         {previewOpen && <PreviewPane slug={slug} />}
       </div>
     </EditorProvider>
   )
-}
-
-const wrap: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 0,
-  minHeight: 'calc(100vh - 160px)',
-  background: 'rgba(255,255,255,0.55)',
-  borderRadius: 18,
-  overflow: 'hidden',
-  boxShadow: '0 12px 36px rgba(42,33,24,0.06)',
-}
-
-const topBar: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '14px 20px',
-  borderBottom: '1px solid rgba(42,33,24,0.08)',
-  gap: 12,
-  background: 'rgba(255,255,255,0.8)',
-  flexWrap: 'wrap',
-}
-
-const editorRow: React.CSSProperties = {
-  display: 'flex',
-  minHeight: 480,
-  flex: 1,
-}
-
-const fieldPane: React.CSSProperties = {
-  flex: 1,
-  padding: 28,
-  overflow: 'auto',
-  minWidth: 0,
 }
 
 const previewToggle: React.CSSProperties = {

@@ -77,7 +77,9 @@ export default function SectionList({ slug }: Props) {
   )
 }
 
-const wrap: React.CSSProperties = { width: 280, flexShrink: 0, borderRight: '1px solid rgba(42,33,24,0.08)', background: 'rgba(255,255,255,0.55)', display: 'flex', flexDirection: 'column' }
+/* Width + border come from the parent (.sectionList in EditorRoot.module.css)
+   so this aside stays responsive. We just need flex column layout. */
+const wrap: React.CSSProperties = { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'transparent' }
 const hdr:  React.CSSProperties = { padding: '18px 16px 8px' }
 const kicker:React.CSSProperties = { margin: 0, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.24em', color: '#E8553E' }
 const list: React.CSSProperties = { display: 'grid', gap: 4, padding: '4px 8px', flex: 1, overflow: 'auto' }
