@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import tabs from './dashboardTabs.module.css'
 
 export interface NoteRow {
   id: string
@@ -62,17 +63,17 @@ export default function NotesTab({ slug, notes }: Props) {
   }
 
   return (
-    <div style={card}>
-      <header style={headerRow}>
+    <div className={tabs.card}>
+      <header className={tabs.headerRow}>
         <div>
-          <h2 style={h2}>Guestbook Notes</h2>
+          <h2>Guestbook Notes</h2>
           <p style={sub}>
             Note dari tamu yang submit di section "Leave a Note". Auto-publish
             ke halaman undangan — kamu bisa hapus dari sini kalau ada yang
             tidak pantas.
           </p>
         </div>
-        <div style={actions}>
+        <div className={tabs.headerActions}>
           <button
             type="button"
             onClick={() => startTransition(() => router.refresh())}
@@ -85,15 +86,15 @@ export default function NotesTab({ slug, notes }: Props) {
         </div>
       </header>
 
-      <div style={statsRow}>
+      <div className={tabs.statsRow}>
         <Stat label="Total notes" value={String(notes.length)} />
         <Stat label="Latest" value={notes[0] ? new Date(notes[0].created_at).toLocaleDateString('id-ID') : '—'} />
       </div>
 
-      <div style={filterRow}>
+      <div className={tabs.filterRow}>
         <input
           type="search"
-          placeholder="Search by name or pesan…"
+          placeholder="Cari nama atau pesan…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           style={searchInput}
@@ -101,9 +102,9 @@ export default function NotesTab({ slug, notes }: Props) {
       </div>
 
       {notes.length === 0 ? (
-        <div style={empty}>Belum ada note. Tamu yang submit di section "Leave a Note" akan muncul di sini.</div>
+        <div className={tabs.empty}>Belum ada note. Tamu yang submit di section "Leave a Note" akan muncul di sini.</div>
       ) : filtered.length === 0 ? (
-        <div style={empty}>Tidak ada note yang cocok dengan pencarian.</div>
+        <div className={tabs.empty}>Tidak ada note yang cocok dengan pencarian.</div>
       ) : (
         <div style={grid}>
           {filtered.map((n) => (
@@ -150,19 +151,12 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 // ── Styles ──
-const card: React.CSSProperties = { background: 'rgba(255,255,255,0.85)', borderRadius: 18, padding: 28, boxShadow: '0 12px 36px rgba(42,33,24,0.06)' }
-const headerRow: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 18, flexWrap: 'wrap' }
-const h2: React.CSSProperties = { fontFamily: 'var(--font-display, serif)', fontStyle: 'italic', fontSize: 28, margin: 0 }
 const sub: React.CSSProperties = { margin: '4px 0 0', fontSize: 13, color: 'rgba(42,33,24,0.6)', maxWidth: 540, lineHeight: 1.5 }
-const actions: React.CSSProperties = { display: 'flex', gap: 8 }
 const ghostBtn: React.CSSProperties = { padding: '8px 14px', borderRadius: 999, border: '1px solid rgba(42,33,24,0.2)', background: 'transparent', cursor: 'pointer', fontSize: 12, letterSpacing: '0.1em' }
-const statsRow: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginBottom: 20 }
 const statBox: React.CSSProperties = { background: '#fff', borderRadius: 12, padding: 14, border: '1px solid rgba(42,33,24,0.06)' }
 const statLabel: React.CSSProperties = { margin: 0, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.2em', color: 'rgba(42,33,24,0.55)' }
 const statValue: React.CSSProperties = { margin: '6px 0 0', fontFamily: 'var(--font-display, serif)', fontStyle: 'italic', fontSize: 22, color: '#2A2118' }
-const filterRow: React.CSSProperties = { marginBottom: 16 }
 const searchInput: React.CSSProperties = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(42,33,24,0.16)', fontSize: 14, outline: 'none', background: '#fff' }
-const empty: React.CSSProperties = { padding: 40, textAlign: 'center', color: 'rgba(42,33,24,0.5)', fontSize: 13, border: '1px dashed rgba(42,33,24,0.2)', borderRadius: 12 }
 const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }
 const noteCard: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 10, padding: 14, background: '#fff', borderRadius: 12, border: '1px solid rgba(42,33,24,0.08)' }
 const colorDot: React.CSSProperties = { width: 10, height: 10, borderRadius: '50%', marginTop: 7, flexShrink: 0 }
