@@ -365,12 +365,15 @@
    RESPONSIVE
    ============================================================================ */
 
-@media (max-width: 960px) {
+/* Desktop boundary — pulls decoration inward so it doesn't crowd the gate
+   card on iPad Pro landscape and below. */
+@media (max-width: 1023.98px) {
   .decorTopLeft,
   .decorBottomRight { width: clamp(100px, 18vw, 160px); }
 }
 
-@media (max-width: 760px) {
+/* Tablet / mobile boundary — tightens hero gate sizing + countdown width. */
+@media (max-width: 767.98px) {
   .gateCard {
     width:  calc(100vw - var(--gate) * (100vw - min(300px, 82vw)));
     height: calc(100vh - var(--gate) * (100vh - min(420px, 58vh)));

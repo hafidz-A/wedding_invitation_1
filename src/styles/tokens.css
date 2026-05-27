@@ -26,11 +26,32 @@
   --font-script: 'Kaushan Script', 'Brush Script MT', cursive;
   --font-serif-soft: 'Kameron', 'Cormorant Garamond', serif;
 
-  /* ---------- Spacing ---------- */
-  --spacing-section: 120px;
-  --spacing-section-mobile: 72px;
+  /* ---------- Spacing ----------
+     `--spacing-section` is now FLUID — single value that grows from 64px on
+     a 320px phone up to 120px on desktop. Sections that need the old
+     desktop-fixed value can still hard-code it; everything else inherits a
+     responsive default so we don't need a media query just to shrink vertical
+     padding.
+       --spacing-section-mobile is kept as an alias for files that still
+       reference it directly.                                                 */
+  --spacing-section: clamp(64px, 9vw, 120px);
+  --spacing-section-mobile: clamp(56px, 12vw, 80px);
   --container-max: 1240px;
   --container-pad: clamp(20px, 4vw, 48px);
+
+  /* ---------- Breakpoints (reference values) ----------
+     CSS custom properties can't be used inside @media queries directly, but
+     these constants document the project-wide breakpoint contract so every
+     section uses the SAME numbers. When you write a media query, use:
+        @media (min-width: 768px)   ← tablet & up
+        @media (min-width: 1024px)  ← desktop & up
+     Mobile-first: base styles target 320–767px, then layer up.               */
+  --bp-tablet: 768px;
+  --bp-desktop: 1024px;
+
+  /* Minimum tap-target enforced via the .tapTarget utility in utilities.css
+     and respected directly on buttons/links in section CSS where applicable. */
+  --tap-target: 44px;
 
   /* ---------- Radii ---------- */
   --border-radius-card: 16px;

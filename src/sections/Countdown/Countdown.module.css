@@ -171,6 +171,88 @@
   font-style: normal;
 }
 
+/* ---------- Add-to-Calendar ----------
+   Pill button + popover menu. Anchored to the inner container (text-align:
+   center) so it lands under the timer naturally. The wrap is position:relative
+   so the menu can absolute-position itself below the button.
+*/
+.calendarWrap {
+  position: relative;
+  display: inline-block;
+  margin-top: clamp(32px, 4.5vw, 48px);
+}
+
+.calendarButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 26px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-charcoal);
+  background: transparent;
+  border: 1px solid var(--color-charcoal);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+}
+
+.calendarButton:hover,
+.calendarButton:focus-visible {
+  background: var(--color-charcoal);
+  color: #ffffff;
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.calendarIcon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.calendarMenu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  margin-left: -110px; /* half of min-width to center without colliding with motion's transform */
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid rgba(42, 33, 24, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 14px 36px rgba(42, 33, 24, 0.14);
+  padding: 6px;
+  z-index: 10;
+  transform-origin: top center;
+}
+
+.calendarOption {
+  display: block;
+  width: 100%;
+  padding: 11px 16px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--color-charcoal);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.calendarOption:hover,
+.calendarOption:focus-visible {
+  background: rgba(232, 85, 62, 0.08);
+  color: var(--color-coral);
+  outline: none;
+}
+
 /* ---------- Message states (during / after the day) ---------- */
 .message {
   font-family: var(--font-display);

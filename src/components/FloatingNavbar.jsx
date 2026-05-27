@@ -7,9 +7,16 @@ import styles from './FloatingNavbar.module.css'
 
 /**
  * Floating in-page navigation.
+ *
+ * Responsive behavior:
+ *   • Desktop / tablet (≥768px): horizontal pill list with ‹ › scroll buttons.
+ *   • Mobile (<768px): a single hamburger trigger in the corner that opens a
+ *     full-width drop-down sheet listing every section vertically. Both
+ *     surfaces share the same `items` array and click handler — the only
+ *     thing that differs is the markup the CSS reveals at each breakpoint.
+ *
+ * Visibility on scroll:
  *   • Appears after the user scrolls past `threshold` px.
- *   • Centered horizontally via flex container (no transform-translate
- *     trickery that could clip on narrow viewports).
  *   • Click handler does smooth-scroll to the target section via
  *     `scrollIntoView({ behavior: 'smooth' })` for cross-browser support.
  *   • Active item is highlighted via IntersectionObserver — whichever
@@ -22,9 +29,13 @@ function stackLabel(text) {
   const words = String(text || '').trim().split(/\s+/).filter(Boolean)
   if (words.length <= 1) return words[0] || ''
   if (words.length === 2) return words.join('\n')
-  // 3 or 4 words — balanced split: first half on line 1, rest on line 2
   const mid = Math.ceil(words.length / 2)
   return words.slice(0, mid).join(' ') + '\n' + words.slice(mid).join(' ')
+}
+
+// Single-line label for the mobile sheet (which has plenty of horizontal room).
+function flatLabel(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim()
 }
 
 const DEFAULT_LABELS = {
@@ -51,6 +62,7 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
   const [activeId, setActiveId] = useState(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const listRef = useRef(null)
 
   // Show/hide based on scroll position
@@ -61,45 +73,31 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [threshold])
 
-  // Build the list of visible nav items. Multi-word labels (up to 4 words)
-  // are split into two balanced lines so the pill stays compact:
-  //   1 word        → "Coil"
-  //   2 words       → "Pegas\nCoil"
-  //   3 words       → "Pegas Coil\nCinta"   (mid = ceil(3/2) = 2)
-  //   4 words       → "Pegas Cinta\nKami Selamanya"
-  // Paired with `white-space: pre-line` in the CSS so the \n becomes a
-  // line break inside the pill. Also skip any section whose `type` isn't
-  // in sectionRegistry — those are stale entries that shouldn't pollute
-  // the nav (e.g. legacy musicPopup).
+  // Build the list of visible nav items.
   const items = sections
     .filter((s) => s.enabled !== false && !s.navHidden)
     .filter((s) => Boolean(sectionRegistry[s.type]))
     .map((s) => {
       const raw = s.navLabel || DEFAULT_LABELS[s.type] || s.id
-      return { id: s.id, label: stackLabel(raw) }
+      return { id: s.id, label: stackLabel(raw), flatLabel: flatLabel(raw) }
     })
 
   // Track which section the user is currently viewing
   useEffect(() => {
     if (items.length === 0) return undefined
-
-    // Defer to a microtask to ensure section DOM nodes exist
     const setup = () => {
       const targets = items
         .map((it) => document.getElementById(it.id))
         .filter(Boolean)
       if (targets.length === 0) return null
-
       const observer = new IntersectionObserver(
         (entries) => {
-          // Pick the entry with the largest intersectionRatio
           const sorted = [...entries]
             .filter((e) => e.isIntersecting)
             .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
           if (sorted[0]) setActiveId(sorted[0].target.id)
         },
         {
-          // Trigger when section's center ~ viewport center
           rootMargin: '-30% 0px -30% 0px',
           threshold: [0, 0.25, 0.5, 0.75, 1],
         },
@@ -107,18 +105,9 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
       targets.forEach((el) => observer.observe(el))
       return observer
     }
-
     let observer = setup()
-    // Re-setup once after a short delay in case sections were
-    // lazy-loaded and not yet in the DOM at first mount
-    const t = setTimeout(() => {
-      if (!observer) observer = setup()
-    }, 300)
-
-    return () => {
-      clearTimeout(t)
-      observer?.disconnect()
-    }
+    const t = setTimeout(() => { if (!observer) observer = setup() }, 300)
+    return () => { clearTimeout(t); observer?.disconnect() }
   }, [items])
 
   const handleClick = (e, id) => {
@@ -126,9 +115,9 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
     const target = document.getElementById(id)
     if (target) {
       target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      // Optimistic update — observer will sync the real active state shortly
       setActiveId(id)
     }
+    setMobileOpen(false)
   }
 
   const checkScroll = () => {
@@ -154,6 +143,19 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
     return () => { el.removeEventListener('scroll', checkScroll); ro.disconnect() }
   }, [visible, items.length])
 
+  // Lock body scroll while the mobile sheet is open, and close on Escape.
+  useEffect(() => {
+    if (!mobileOpen) return undefined
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e) => { if (e.key === 'Escape') setMobileOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [mobileOpen])
+
   if (items.length === 0) return null
 
   return (
@@ -167,6 +169,7 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           aria-hidden={!visible}
         >
+          {/* ===== Desktop / tablet: horizontal pill list (≥768px) ===== */}
           <nav className={styles.nav} aria-label="Section navigation">
             {canScrollLeft && (
               <button
@@ -182,9 +185,7 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
                   <a
                     href={`#${it.id}`}
                     onClick={(e) => handleClick(e, it.id)}
-                    className={`${styles.link} ${
-                      activeId === it.id ? styles.linkActive : ''
-                    }`}
+                    className={`${styles.link} ${activeId === it.id ? styles.linkActive : ''}`}
                     aria-current={activeId === it.id ? 'true' : undefined}
                   >
                     {it.label}
@@ -201,6 +202,60 @@ export default function FloatingNavbar({ sections = [], threshold = 600 }) {
               >›</button>
             )}
           </nav>
+
+          {/* ===== Mobile (<768px): hamburger trigger + sheet ===== */}
+          <button
+            type="button"
+            className={styles.hamburger}
+            onClick={() => setMobileOpen((o) => !o)}
+            aria-expanded={mobileOpen}
+            aria-controls="floating-nav-sheet"
+            aria-label={mobileOpen ? 'Tutup menu' : 'Buka menu'}
+          >
+            <span className={`${styles.bar} ${mobileOpen ? styles.barTop : ''}`} />
+            <span className={`${styles.bar} ${mobileOpen ? styles.barMid : ''}`} />
+            <span className={`${styles.bar} ${mobileOpen ? styles.barBot : ''}`} />
+          </button>
+
+          <AnimatePresence>
+            {mobileOpen && (
+              <>
+                <motion.div
+                  className={styles.sheetBackdrop}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => setMobileOpen(false)}
+                  aria-hidden="true"
+                />
+                <motion.nav
+                  id="floating-nav-sheet"
+                  className={styles.sheet}
+                  initial={{ opacity: 0, y: -16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -16 }}
+                  transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                  aria-label="Section navigation"
+                >
+                  <ul className={styles.sheetList}>
+                    {items.map((it) => (
+                      <li key={it.id}>
+                        <a
+                          href={`#${it.id}`}
+                          onClick={(e) => handleClick(e, it.id)}
+                          className={`${styles.sheetLink} ${activeId === it.id ? styles.sheetLinkActive : ''}`}
+                          aria-current={activeId === it.id ? 'true' : undefined}
+                        >
+                          {it.flatLabel}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.nav>
+              </>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
     </AnimatePresence>

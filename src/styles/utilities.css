@@ -41,6 +41,39 @@
 .inline { display: inline-block; }
 .hidden { display: none !important; }
 
+/* Responsive visibility helpers — paired with the project-wide
+   768 / 1024 breakpoints. Use these instead of writing one-off
+   media queries to hide a chunk of markup on phones or tablets.   */
+.hide-mobile  { }
+.hide-tablet  { }
+.hide-desktop { }
+.show-mobile  { display: none !important; }
+.show-tablet  { display: none !important; }
+.show-desktop { display: none !important; }
+
+@media (max-width: 767.98px) {
+  .hide-mobile { display: none !important; }
+  .show-mobile { display: revert !important; }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .hide-tablet { display: none !important; }
+  .show-tablet { display: revert !important; }
+}
+@media (min-width: 1024px) {
+  .hide-desktop { display: none !important; }
+  .show-desktop { display: revert !important; }
+}
+
+/* Tap-target helper — explicit floor of 44×44px for icon-only buttons that
+   would otherwise render too small for fingers on mobile. */
+.tapTarget {
+  min-width: var(--tap-target);
+  min-height: var(--tap-target);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Position helpers */
 .relative { position: relative; }
 .absolute { position: absolute; inset: 0; }

@@ -9,7 +9,7 @@
 /* ── Header ── */
 .header {
   text-align: center;
-  padding: 0 48px 52px;
+  padding: 0 var(--container-pad) clamp(32px, 5vw, 52px);
 }
 
 .eyebrow {
@@ -35,15 +35,17 @@
   letter-spacing: 0.04em;
 }
 
-/* ── Scroll stage ── */
+/* ── Scroll stage ──
+   Mobile-first defaults: 2 columns, fluid height, tight gutter. The
+   responsive block below progressively adds columns (3/4/5) and lifts the
+   height as the viewport grows. Belts 3/4/5 stay `display: none` by default
+   so a phone never paints + animates DOM it can't show. */
 .stage {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-  padding: 0 24px;
-  /* Tall stage shows ~5 rows of photos at once — feels like a proper photo
-     wall, with plenty of "sisa" (more coming) as the conveyor loops past. */
-  height: 1080px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 0 var(--container-pad);
+  height: clamp(720px, 110vw, 1080px);
   overflow: hidden;
   /* Soft fade at top and bottom */
   mask-image: linear-gradient(
@@ -116,33 +118,56 @@
   filter: saturate(0.85);
 }
 
-/* ── Responsive ──
-   Each hidden breakpoint also sets animation:none so when the media
-   query is removed (viewport widens), the CSS animation restarts cleanly
-   from its initial keyframe rather than resuming mid-cycle.
-*/
-@media (max-width: 1280px) {
-  .stage { grid-template-columns: repeat(4, 1fr); }
-  .belt:nth-child(5) { display: none; animation: none; }
+/* ── Responsive — mobile-first ──
+   Belts 3/4/5 default to `display: none; animation: none` so the phone
+   skips their layout + animation cost. Each min-width breakpoint then
+   "unhides" the next belt and bumps the column count. Re-asserting
+   `animation` keeps the CSS keyframes restarting cleanly when the
+   viewport widens past the threshold (animation: none → unset on flip). */
+.belt:nth-child(3),
+.belt:nth-child(4),
+.belt:nth-child(5) {
+  display: none;
+  animation: none;
 }
 
-@media (max-width: 1023px) {
-  .stage { grid-template-columns: repeat(3, 1fr); }
-  .belt:nth-child(4),
-  .belt:nth-child(5) { display: none; animation: none; }
+/* Small phone → larger phone (≥480px): same 2-col layout, looser gutter. */
+@media (min-width: 480px) {
+  .stage { gap: 10px; }
 }
 
-@media (max-width: 767px) {
-  /* On phones: ~4 rows visible (smaller photos) — still feels rich. */
-  .stage { grid-template-columns: repeat(2, 1fr); height: 880px; }
-  .belt:nth-child(3),
-  .belt:nth-child(4),
-  .belt:nth-child(5) { display: none; animation: none; }
-  .header { padding: 0 24px 40px; }
+/* Tablet (≥768px): unlock 3rd column. */
+@media (min-width: 768px) {
+  .stage {
+    grid-template-columns: repeat(3, 1fr);
+    height: clamp(840px, 100vw, 1080px);
+  }
+  .belt:nth-child(3) {
+    display: flex;
+    animation: var(--belt-anim, beltUp) var(--spd, 20s) linear infinite;
+  }
+  .beltDown:nth-child(3) { animation-name: beltDown; }
 }
 
-@media (max-width: 480px) {
-  /* Keep 2 columns at very small phones so a 20-photo gallery still
-     renders quickly in 2 streams; only reduce padding/gap. */
-  .stage { padding: 0 12px; gap: 8px; }
+/* Desktop (≥1024px): unlock 4th column. */
+@media (min-width: 1024px) {
+  .stage {
+    grid-template-columns: repeat(4, 1fr);
+    height: 1080px;
+  }
+  .belt:nth-child(4) {
+    display: flex;
+    animation: var(--belt-anim, beltUp) var(--spd, 20s) linear infinite;
+  }
+  .beltDown:nth-child(4) { animation-name: beltDown; }
+}
+
+/* Wide desktop (≥1280px): full 5-column wall. */
+@media (min-width: 1280px) {
+  .stage { grid-template-columns: repeat(5, 1fr); }
+  .belt:nth-child(5) {
+    display: flex;
+    animation: var(--belt-anim, beltUp) var(--spd, 20s) linear infinite;
+  }
+  .beltDown:nth-child(5) { animation-name: beltDown; }
 }

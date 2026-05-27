@@ -100,7 +100,7 @@
   max-width: 64ch;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 767.98px) {
   .trigger { padding: 16px 18px; }
   .panel { padding: 0 18px 18px; }
   .answer { max-width: 100%; }

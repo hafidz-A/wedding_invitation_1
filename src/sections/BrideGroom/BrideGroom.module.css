@@ -254,13 +254,13 @@
   .slot-groom { margin-top: clamp(60px, 6vw, 120px); }
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1023.98px) {
   .stage { perspective: 1400px; gap: clamp(24px, 4vw, 60px); }
   .section { min-height: 150vh; }
   .photoOuter { width: clamp(160px, 22vw, 220px); height: clamp(160px, 22vw, 220px); }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 767.98px) {
   .stage {
     grid-template-columns: 1fr; gap: clamp(48px, 8vw, 80px);
     perspective: 1000px; perspective-origin: 50% 40%;

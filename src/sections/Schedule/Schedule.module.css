@@ -1,13 +1,13 @@
 /* ============================================================================
    SCHEDULE — pinned scroll-hijacking timeline
 
-   pinnedMode (>760px):
+   pinnedMode (≥768px):
      Section is tall (height set inline). Inner `.pinned` is sticky,
      keeping the timeline visible while user scrolls. Each event card
      slides in from the LEFT one by one (scroll-coupled stagger).
      All events fade out together at end.
 
-   stackedMode (≤760px):
+   stackedMode (<768px):
      Section is auto-height. Each event uses whileInView for natural
      reveal as it enters the viewport.
    ============================================================================ */
@@ -226,7 +226,7 @@
 .accent-purple  { --accent: var(--color-purple); }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 760px) {
+@media (max-width: 767.98px) {
   .timelineLine { left: 22px; }
   .event { grid-template-columns: 1fr; gap: 6px; padding-left: 44px; }
   .timeBadge { text-align: left; font-size: 18px; padding-right: 0; }
@@ -234,8 +234,8 @@
   .card::before { left: -34px; top: -22px; transform: translate(0, 0); }
 }
 
-/* Tighter spacing at tablet width while still pinned (761–1100px) */
-@media (min-width: 761px) and (max-width: 1100px) {
+/* Tighter spacing at tablet width while still pinned (768–1023px) */
+@media (min-width: 768px) and (max-width: 1023.98px) {
   .pinnedMode .inner { padding: clamp(32px, 5vh, 48px) var(--container-pad); }
   .pinnedMode .timeline { gap: clamp(6px, 1.2vh, 12px); }
 }

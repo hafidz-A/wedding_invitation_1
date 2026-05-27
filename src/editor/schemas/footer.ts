@@ -4,7 +4,6 @@ export const footerSchema: SectionSchema = {
   type: 'footer',
   label: 'Footer',
   fields: [
-    { key: 'monogram',   label: 'Monogram',   type: 'text' },
     { key: 'hashtag',    label: 'Hashtag',    type: 'text' },
     { key: 'message',    label: 'Message',    type: 'textarea', rows: 2 },
     { key: 'coupleName', label: 'Couple name', type: 'text' },

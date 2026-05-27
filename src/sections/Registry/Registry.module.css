@@ -107,5 +107,6 @@
 .accent-gold    { --accent: var(--color-gold); }
 .accent-sky     { --accent: var(--color-sky); }
 
-@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-@media (max-width: 480px) { .card { padding: 24px 18px; } }
+/* Tablet (≤1023px) → single column so registry cards don't get cramped */
+@media (max-width: 1023.98px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px)     { .card { padding: 24px 18px; } }

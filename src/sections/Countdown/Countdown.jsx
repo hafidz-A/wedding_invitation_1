@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import styles from './Countdown.module.css'
 
@@ -13,6 +13,13 @@ const DEFAULTS = {
   messageAfter: 'Terima kasih telah menjadi bagian dari kisah kami.',
   labels: { days: 'Hari', hours: 'Jam', minutes: 'Menit', seconds: 'Detik' },
   style: 'card',
+  // Add-to-Calendar (optional — feature renders only in `countdown` mode)
+  calendarEnabled: true,
+  calendarLabel: 'Tambah ke Kalender',
+  calendarTitle: '',          // event SUMMARY — falls back to section `title`
+  calendarLocation: '',       // event LOCATION
+  calendarDescription: '',    // event DESCRIPTION
+  calendarDurationHours: 4,   // event length in hours
 }
 
 const pad = (n) => String(Math.max(0, n)).padStart(2, '0')
@@ -38,6 +45,8 @@ export default function Countdown(props) {
   const {
     weddingDate, eyebrow, title, subtitle,
     messageDuring, messageAfter, labels, style,
+    calendarEnabled, calendarLabel, calendarTitle,
+    calendarLocation, calendarDescription, calendarDurationHours,
   } = merged
 
   const targetMs = useMemo(() => new Date(weddingDate).getTime(), [weddingDate])
@@ -94,15 +103,28 @@ export default function Countdown(props) {
         </header>
 
         {mode === 'countdown' && (
-          <div className={`${styles.timer} ${variantClass}`} role="timer">
-            <Unit value={ready ? String(days) : '—'} label={labels.days} />
-            <Separator visible={style === 'mono'} />
-            <Unit value={ready ? pad(hours)   : '—'} label={labels.hours} />
-            <Separator visible={style === 'mono'} />
-            <Unit value={ready ? pad(minutes) : '—'} label={labels.minutes} />
-            <Separator visible={style === 'mono'} />
-            <Unit value={ready ? pad(seconds) : '—'} label={labels.seconds} />
-          </div>
+          <>
+            <div className={`${styles.timer} ${variantClass}`} role="timer">
+              <Unit value={ready ? String(days) : '—'} label={labels.days} />
+              <Separator visible={style === 'mono'} />
+              <Unit value={ready ? pad(hours)   : '—'} label={labels.hours} />
+              <Separator visible={style === 'mono'} />
+              <Unit value={ready ? pad(minutes) : '—'} label={labels.minutes} />
+              <Separator visible={style === 'mono'} />
+              <Unit value={ready ? pad(seconds) : '—'} label={labels.seconds} />
+            </div>
+
+            {calendarEnabled && (
+              <AddToCalendar
+                date={weddingDate}
+                durationHours={calendarDurationHours}
+                title={calendarTitle || title}
+                location={calendarLocation}
+                description={calendarDescription}
+                label={calendarLabel}
+              />
+            )}
+          </>
         )}
 
         {mode === 'during' && (
@@ -146,6 +168,156 @@ function Unit({ value, label }) {
 function Separator({ visible }) {
   if (!visible) return null
   return <span className={styles.separator} aria-hidden="true">:</span>
+}
+
+/* ---------- Add-to-Calendar -------------------------------------------------
+   One pill button → dropdown with Google / Apple (.ics) / Outlook.
+   - Google + Outlook open in a new tab (web URL templates)
+   - Apple/iCal downloads an .ics blob (universal — also works on iPhone)
+   - Closes on outside click + Escape
+---------------------------------------------------------------------------- */
+function AddToCalendar({ date, durationHours = 4, title, location, description, label }) {
+  const [open, setOpen] = useState(false)
+  const wrapRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('touchstart', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('touchstart', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const start = new Date(date)
+  const end = new Date(start.getTime() + (Number(durationHours) || 4) * 3600000)
+
+  // "20251115T090000Z" — UTC stamp format used by Google/Outlook URLs and iCal
+  const fmtUTC = (d) =>
+    d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+
+  const startUTC = fmtUTC(start)
+  const endUTC   = fmtUTC(end)
+  const encTitle = encodeURIComponent(title || 'Wedding')
+  const encLoc   = encodeURIComponent(location || '')
+  const encDesc  = encodeURIComponent(description || '')
+
+  const googleUrl =
+    `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+    `&text=${encTitle}` +
+    `&dates=${startUTC}/${endUTC}` +
+    `&details=${encDesc}` +
+    `&location=${encLoc}`
+
+  const outlookUrl =
+    `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose` +
+    `&rru=addevent` +
+    `&startdt=${start.toISOString()}` +
+    `&enddt=${end.toISOString()}` +
+    `&subject=${encTitle}` +
+    `&body=${encDesc}` +
+    `&location=${encLoc}`
+
+  const downloadIcs = () => {
+    // RFC 5545 minimal VEVENT — \r\n line endings, escape commas/semicolons
+    const esc = (s) => String(s || '').replace(/[\\,;]/g, (m) => '\\' + m).replace(/\n/g, '\\n')
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Wedding//Countdown//EN',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:${start.getTime()}-${Math.random().toString(36).slice(2, 8)}@wedding`,
+      `DTSTAMP:${fmtUTC(new Date())}`,
+      `DTSTART:${startUTC}`,
+      `DTEND:${endUTC}`,
+      `SUMMARY:${esc(title || 'Wedding')}`,
+      `LOCATION:${esc(location)}`,
+      `DESCRIPTION:${esc(description)}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n')
+
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(title || 'wedding').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.ics`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setOpen(false)
+  }
+
+  return (
+    <div className={styles.calendarWrap} ref={wrapRef}>
+      <button
+        type="button"
+        className={styles.calendarButton}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        <svg className={styles.calendarIcon} viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3.5" y="5.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <line x1="3.5" y1="10" x2="20.5" y2="10" stroke="currentColor" strokeWidth="1.5" />
+          <line x1="8" y1="3" x2="8" y2="7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <line x1="16" y1="3" x2="16" y2="7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        <span>{label}</span>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            className={styles.calendarMenu}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <a
+              href={googleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.calendarOption}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              Google Calendar
+            </a>
+            <button
+              type="button"
+              className={styles.calendarOption}
+              role="menuitem"
+              onClick={downloadIcs}
+            >
+              Apple Calendar
+            </button>
+            <a
+              href={outlookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.calendarOption}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              Outlook
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
 
 function Floral({ side }) {

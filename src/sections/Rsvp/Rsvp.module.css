@@ -247,7 +247,7 @@
 }
 .resetBtn:hover { background: var(--color-charcoal); color: #fff; }
 
-@media (max-width: 600px) {
+@media (max-width: 767.98px) {
   .stepper { width: 100%; justify-content: space-between; }
   .stepBtn { width: 44px; height: 44px; font-size: 22px; }
   .toggle { gap: 6px; }

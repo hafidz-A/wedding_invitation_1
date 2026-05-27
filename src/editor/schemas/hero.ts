@@ -4,12 +4,6 @@ export const heroSchema: SectionSchema = {
   type: 'hero',
   label: 'Hero',
   fields: [
-    {
-      key: 'monogram',
-      label: 'Monogram (favicon tab browser)',
-      type: 'text',
-      help: 'Inisial yang muncul di tab browser tamu. Pendek-pendek aja, mis. "A & R". Kalau kosong, otomatis pakai huruf pertama nama pengantin.',
-    },
     { key: 'coupleName',       label: 'Couple name',   type: 'text' },
     { key: 'brideName',        label: 'Bride name',    type: 'text' },
     { key: 'groomName',        label: 'Groom name',    type: 'text' },

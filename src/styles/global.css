@@ -56,6 +56,17 @@ body {
 
 img, picture, svg, video { display: block; max-width: 100%; height: auto; }
 
+/* Long-content guard:
+   Wedding URLs, email addresses, and hashtags often appear at narrow widths
+   inside cards. Without these rules a single 40-char word can push its
+   container wider than the viewport, breaking the 'no horizontal scroll' rule
+   despite the html-level overflow clip. `overflow-wrap` is the modern alias
+   for word-wrap; `word-break: break-word` is the legacy fallback safari needs. */
+p, h1, h2, h3, h4, h5, h6, span, li, a, td, th, label, blockquote, figcaption {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
 button {
   font-family: inherit;
   font-size: inherit;
@@ -64,6 +75,25 @@ button {
   border: 0;
   padding: 0;
   cursor: pointer;
+}
+
+/* Mobile tap-target floor — anywhere a <button>, <a>, or [role="button"] is
+   used in a section, this ensures it meets the 44×44px Apple HIG / WCAG 2.5.5
+   target size at narrow viewports. Sections that intentionally render
+   thin/decorative chips can opt out with `.noTapTarget`. */
+@media (max-width: 767.98px) {
+  button,
+  a,
+  [role="button"],
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+  }
+  button.noTapTarget,
+  a.noTapTarget,
+  [role="button"].noTapTarget {
+    min-height: 0;
+  }
 }
 
 input, textarea, select {

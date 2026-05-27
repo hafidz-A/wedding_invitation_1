@@ -33,7 +33,7 @@ const EXIT_RANGE_END    = 1.00   // event N finishes fading out
 const CARD_EXIT_DURATION = 0.14  // duration of each card's fade-out
 
 // Below this width, fall back to per-card whileInView reveals
-const COMPACT_BREAKPOINT = '(max-width: 760px)'
+const COMPACT_BREAKPOINT = '(max-width: 767.98px)'
 
 /* ════════════════════════════════════════════════════════════════════════ */
 
