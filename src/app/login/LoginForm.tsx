@@ -4,28 +4,18 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { createAccount } from './actions'
 
 /**
- * /signup — email + password account creation, NO email verification.
+ * /login — slug-agnostic password login.
  *
- * Why we skip email verification (re: Supabase rate-limit pain):
- *   - Built-in SMTP has a strict 2 emails/hour cap on free tier
- *   - The wedding-SaaS misuse risk is low — we accept the trade-off
- *   - /forgot-password still requires real email ownership for recovery
- *
- * Flow:
- *   1. User fills email + password + repeat
- *   2. Server action `createAccount` creates the auth.users row via the
- *      admin API with email_confirm: true → account immediately usable
- *   3. Client signs in via signInWithPassword to establish a session
- *   4. router.push('/onboarding') → 5-field wizard
+ * After signInWithPassword succeeds, /onboarding takes over: it's
+ * idempotent — returning users get auto-redirected to /<slug>/dashboard,
+ * brand-new accounts get the 5-field wizard.
  */
-export default function SignupForm() {
+export default function LoginForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [repeat, setRepeat] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -37,41 +27,33 @@ export default function SignupForm() {
       setError('Mohon isi email dan password')
       return
     }
-    if (password.length < 8) {
-      setError('Password minimal 8 karakter')
-      return
-    }
-    if (password !== repeat) {
-      setError('Password dan ulangan password tidak sama')
-      return
-    }
 
     setSubmitting(true)
-
-    // Step 1: create the auth.users row (no email sent).
-    const result = await createAccount(email, password)
-    if (!result.ok) {
-      setError(result.error || 'Gagal membuat akun')
-      setSubmitting(false)
-      return
-    }
-
-    // Step 2: sign the user in to establish a session cookie.
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
+
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     })
+
     if (signInError) {
-      setError('Akun berhasil dibuat tapi gagal auto-login. Coba login manual.')
+      const msg = signInError.message.toLowerCase()
+      if (msg.includes('invalid') || msg.includes('credentials')) {
+        setError('Email atau password salah.')
+      } else if (msg.includes('not confirmed')) {
+        setError('Email belum terverifikasi. Cek inbox atau hubungi admin.')
+      } else {
+        setError(signInError.message)
+      }
       setSubmitting(false)
       return
     }
 
-    // Step 3: ke onboarding (5-field wizard).
+    // /onboarding is idempotent: routes returning users to their dashboard,
+    // new users to the 5-field wizard.
     router.push('/onboarding')
     router.refresh()
   }
@@ -80,11 +62,9 @@ export default function SignupForm() {
     <main style={panel}>
       <form onSubmit={onSubmit} style={card}>
         <header style={{ marginBottom: 4 }}>
-          <p style={kicker}>Buat Undangan</p>
-          <h1 style={h1}>Daftar akun</h1>
-          <p style={muted}>
-            Buat akun untuk mulai menyusun undangan pernikahan kamu.
-          </p>
+          <p style={kicker}>Masuk</p>
+          <h1 style={h1}>Login akun</h1>
+          <p style={muted}>Masuk ke dashboard undangan kamu.</p>
         </header>
 
         <label style={field}>
@@ -107,20 +87,7 @@ export default function SignupForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={8}
-            placeholder="Minimal 8 karakter"
-            style={input}
-          />
-        </label>
-
-        <label style={field}>
-          <span style={lbl}>Ulangi password</span>
-          <input
-            type="password"
-            value={repeat}
-            onChange={(e) => setRepeat(e.target.value)}
-            required
-            placeholder="Sama persis dengan di atas"
+            placeholder="Password kamu"
             style={input}
           />
         </label>
@@ -128,13 +95,19 @@ export default function SignupForm() {
         {error && <p style={errorStyle}>{error}</p>}
 
         <button type="submit" disabled={submitting} style={submitBtn}>
-          {submitting ? 'Mendaftar…' : 'Daftar & lanjut isi data'}
+          {submitting ? 'Masuk…' : 'Login'}
         </button>
 
         <p style={{ ...muted, fontSize: 13, textAlign: 'center', marginTop: 14 }}>
-          Sudah punya akun?{' '}
-          <Link href="/login" style={{ color: '#E8553E', textDecoration: 'underline' }}>
-            Login di sini
+          Lupa password?{' '}
+          <Link href="/forgot-password" style={{ color: '#E8553E', textDecoration: 'underline' }}>
+            Reset di sini
+          </Link>
+        </p>
+        <p style={{ ...muted, fontSize: 13, textAlign: 'center', marginTop: 4 }}>
+          Belum punya akun?{' '}
+          <Link href="/signup" style={{ color: '#E8553E', textDecoration: 'underline' }}>
+            Daftar di sini
           </Link>
         </p>
         <p style={{ ...muted, fontSize: 13, textAlign: 'center', marginTop: 4 }}>

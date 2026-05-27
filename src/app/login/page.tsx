@@ -1,16 +1,15 @@
-import SignupForm from '../signup/SignupForm'
+import LoginForm from './LoginForm'
 
 /**
- * /login — slug-agnostic OTP login.
+ * /login — slug-agnostic password login.
  *
- * Same OTP flow as /signup (email → kode 6 digit → /onboarding) — the
- * difference is purely copy. /onboarding is idempotent: it redirects
- * returning users straight to /<slug>/dashboard without re-asking
- * for the 5 basic fields.
+ * User enters email + password. We sign them in via Supabase Auth,
+ * then look up which invitation they own and redirect to that dashboard.
  *
- * Users who DO know their slug + password can still go directly to
- * /<slug>/dashboard for the classic password login.
+ * Compared to /<slug>/dashboard's LoginForm: this one doesn't need
+ * the user to remember their slug — useful when they bookmarked the
+ * landing page but forgot which couple slug they registered with.
  */
 export default function LoginPage() {
-  return <SignupForm variant="login" />
+  return <LoginForm />
 }
