@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { buildWhatsAppUrl, renderMessageTemplate } from '@/lib/guests/whatsapp'
 import { formatPhoneDisplay } from '@/lib/guests/phone'
@@ -34,6 +34,13 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
   const [editingGuest, setEditingGuest] = useState<GuestRow | null>(null)
   const [pending, startTransition] = useTransition()
 
+  // Local mirror of the guests list. Mutations update this state directly
+  // (optimistic / immediate) instead of calling router.refresh(), which
+  // would re-fetch + re-decrypt the entire dashboard tree. The prop sync
+  // below catches external refreshes (e.g. router.refresh() from import).
+  const [localGuests, setLocalGuests] = useState<GuestRow[]>(guests)
+  useEffect(() => { setLocalGuests(guests) }, [guests])
+
   // Editable global template state — initialized from invitation config,
   // saved server-side via updateInviteMessageTemplate when "Simpan" clicked.
   const [template, setTemplate] = useState(messageTemplate || DEFAULT_TEMPLATE)
@@ -59,7 +66,7 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim()
-    return guests.filter((g) => {
+    return localGuests.filter((g) => {
       if (filter === 'sent' && !g.sent_at) return false
       if (filter === 'pending' && g.sent_at) return false
       if (!q) return true
@@ -69,36 +76,62 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
         (g.group_label || '').toLowerCase().includes(q)
       )
     })
-  }, [guests, query, filter])
+  }, [localGuests, query, filter])
 
-  const sentCount = guests.filter((g) => g.sent_at).length
-  const pendingCount = guests.length - sentCount
+  const sentCount = localGuests.filter((g) => g.sent_at).length
+  const pendingCount = localGuests.length - sentCount
 
   const handleSend = (g: GuestRow) => {
     // Per-guest override via notes_enc, fallback to global template.
-    // Both are run through renderMessageTemplate so {{name}} / {{url}}
-    // get substituted in either case.
     const source = g.notes && g.notes.trim() ? g.notes : template
     const message = renderMessageTemplate(source, { name: g.name, url: publicUrl })
     const url = buildWhatsAppUrl({ phoneE164: g.phone_e164, message })
+    // Open WA tab immediately (browser permission is tied to user gesture
+    // — must happen synchronously inside the click handler, not awaited).
+    window.open(url, '_blank', 'noopener,noreferrer')
+    // Optimistic: stamp sent_at locally NOW so the badge flips green
+    // without waiting for the server round-trip.
+    const sentAt = new Date().toISOString()
+    setLocalGuests((prev) => prev.map((x) => (x.id === g.id ? { ...x, sent_at: sentAt } : x)))
     startTransition(async () => {
       try {
         await markGuestSent(slug, g.id)
       } catch (e) {
+        // Roll back optimistic update on error
         console.error(e)
+        setLocalGuests((prev) => prev.map((x) => (x.id === g.id ? { ...x, sent_at: null } : x)))
       }
-      window.open(url, '_blank', 'noopener,noreferrer')
-      router.refresh()
     })
   }
 
   const handleAdd = (form: FormData) => {
-    const name = String(form.get('name') || '')
-    const phoneRaw = String(form.get('phone') || '')
-    if (!name.trim()) return
+    const rawName = String(form.get('name') || '')
+    const rawPhone = String(form.get('phone') || '')
+    const name = rawName.trim()
+    if (!name) return
+    // Optimistic: drop a temp row in immediately so the user sees instant feedback
+    const tempId = `temp-${Date.now()}-${Math.random()}`
+    const tempRow: GuestRow = {
+      id: tempId,
+      invitation_id: '',
+      name,
+      phone_e164: null, // will be set properly when server response arrives
+      group_label: null,
+      notes: null,
+      sent_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    setLocalGuests((prev) => [...prev, tempRow])
     startTransition(async () => {
-      await addGuest(slug, { name, phoneRaw })
-      router.refresh()
+      try {
+        const real = await addGuest(slug, { name, phoneRaw: rawPhone })
+        setLocalGuests((prev) => prev.map((x) => (x.id === tempId ? real : x)))
+      } catch (e) {
+        console.error(e)
+        // Roll back the temp row on failure
+        setLocalGuests((prev) => prev.filter((x) => x.id !== tempId))
+      }
     })
   }
 
@@ -325,12 +358,21 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
                   {g.sent_at && (
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
+                        setLocalGuests((prev) =>
+                          prev.map((x) => (x.id === g.id ? { ...x, sent_at: null } : x)),
+                        )
                         startTransition(async () => {
-                          await unmarkGuestSent(slug, g.id)
-                          router.refresh()
+                          try {
+                            await unmarkGuestSent(slug, g.id)
+                          } catch (e) {
+                            // restore on failure
+                            setLocalGuests((prev) =>
+                              prev.map((x) => (x.id === g.id ? { ...x, sent_at: g.sent_at } : x)),
+                            )
+                          }
                         })
-                      }
+                      }}
                       style={{ ...ghostBtn, marginLeft: 6 }}
                       title="Batalkan status terkirim"
                     >
@@ -341,9 +383,15 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
                     type="button"
                     onClick={() => {
                       if (!confirm(`Hapus ${g.name}?`)) return
+                      // Optimistic remove
+                      setLocalGuests((prev) => prev.filter((x) => x.id !== g.id))
                       startTransition(async () => {
-                        await deleteGuest(slug, g.id)
-                        router.refresh()
+                        try {
+                          await deleteGuest(slug, g.id)
+                        } catch (e) {
+                          // restore on failure
+                          setLocalGuests((prev) => [...prev, g])
+                        }
                       })
                     }}
                     style={{ ...ghostBtn, marginLeft: 6, color: '#E8553E' }}
