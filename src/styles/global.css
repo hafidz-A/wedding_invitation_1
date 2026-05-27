@@ -16,29 +16,24 @@ html {
   /* Prevent iOS Safari double-tap zoom while still allowing pinch-zoom (which
      is governed by viewport meta tag). Pages with text inputs stay tap-able. */
   touch-action: manipulation;
-  /* RIGID horizontal lock — both html AND body must clip. iOS Safari is
-     notoriously lossy about html-only clipping (any inner element with
-     transform/100vw/decorative SVG can leak past it), so we lock at every
-     level + explicitly cap width to 100% of the viewport. The combination
-     here is the only one I've found that holds on iOS 15-17 Safari +
-     Chrome iOS + in-app webviews (Instagram / WhatsApp share previews). */
+  /* Horizontal lock using `overflow-x: clip`. Crucial: `clip` (not `hidden`)
+     because `overflow-x: hidden` triggers an implicit `overflow-y: auto`
+     per CSS spec — that creates a SECOND scroll container on top of the
+     normal page scroll, causing the double-scrollbar bug. `clip` avoids
+     the implicit y-axis change entirely.
+       Browser support is wide (Chrome 90+, Firefox 81+, Safari 16+).
+       The `hidden` line is fallback for older browsers ONLY — modern
+     browsers see the `clip` line and use that.
+     We deliberately do NOT set the same on <body>: that would create yet
+     another scroll context and the html-level clip is sufficient here
+     because <body> grows from html naturally. */
   overflow-x: hidden;
   overflow-x: clip;
-  width: 100%;
-  max-width: 100%;
 }
 
 body {
   font-family: var(--font-body);
   color: var(--color-charcoal);
-  /* Match the html clip so iOS doesn't expose horizontal scroll through
-     body-level overflow. position:relative gives fixed children a stable
-     containing block context. */
-  position: relative;
-  width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
-  overflow-x: clip;
   /* Global ambient background — cream base + 5 corner colour washes,
      pinned to the viewport (background-attachment: fixed) so the warmth
      follows the user as they scroll. Each section becomes transparent
