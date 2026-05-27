@@ -8,6 +8,8 @@ import GiftsTab, { type GiftRow } from './GiftsTab'
 import MusicTab from './MusicTab'
 import BackgroundTab from './BackgroundTab'
 import NotesTab, { type NoteRow } from './NotesTab'
+import GuestsTab from './GuestsTab'
+import { type GuestRow } from './guests/actions'
 import styles from './dashboard.module.css'
 
 /**
@@ -49,15 +51,19 @@ export default function DashboardClient({
   rsvps,
   gifts,
   notes = [],
+  guests = [],
 }: {
   slug: string
   invitation: any
   rsvps: RsvpRow[]
   gifts: GiftRow[]
   notes?: NoteRow[]
+  guests?: GuestRow[]
 }) {
   useRefreshLogoutGuard(slug)
-  const [tab, setTab] = useState<'overview' | 'rsvps' | 'gifts' | 'editor' | 'music' | 'background' | 'notes'>('overview')
+  const [tab, setTab] = useState<
+    'rsvps' | 'gifts' | 'guests' | 'editor' | 'music' | 'background' | 'notes'
+  >('rsvps')
 
   return (
     <main
@@ -126,7 +132,7 @@ export default function DashboardClient({
       </header>
 
       <nav className={styles.nav}>
-        {(['overview', 'rsvps', 'gifts', 'notes', 'editor', 'music', 'background'] as const).map((t) => (
+        {(['rsvps', 'gifts', 'guests', 'notes', 'editor', 'music', 'background'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -145,24 +151,12 @@ export default function DashboardClient({
               whiteSpace: 'nowrap',
             }}
           >
-            {t}
+            {t === 'rsvps' ? 'RSVP' : t === 'guests' ? 'Tamu' : t}
           </button>
         ))}
       </nav>
 
       <section className={styles.content}>
-        {tab === 'overview' && (
-          <div style={cardStyle}>
-            <h2 style={h2Style}>Overview</h2>
-            <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px,1fr))', gap: 16 }}>
-              <Stat label="Plan" value={invitation.plan || 'free'} />
-              <Stat label="Template" value={invitation.template_id || 'classic'} />
-              <Stat label="Custom domain" value={invitation.custom_domain || '—'} />
-              <Stat label="Created" value={new Date(invitation.created_at).toLocaleDateString()} />
-            </dl>
-          </div>
-        )}
-
         {tab === 'editor' && (
           <EditorRoot
             slug={slug}
@@ -174,6 +168,19 @@ export default function DashboardClient({
         {tab === 'rsvps' && <RsvpsTab rsvps={rsvps} />}
 
         {tab === 'gifts' && <GiftsTab gifts={gifts} />}
+
+        {tab === 'guests' && (
+          <GuestsTab
+            slug={slug}
+            guests={guests}
+            publicUrl={
+              typeof window !== 'undefined'
+                ? `${window.location.origin}/${slug}`
+                : `/${slug}`
+            }
+            messageTemplate={invitation?.config?.inviteMessageTemplate}
+          />
+        )}
 
         {tab === 'music' && (
           <MusicTab slug={slug} initial={invitation.config?.music ?? null} />
@@ -189,30 +196,3 @@ export default function DashboardClient({
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p style={{ margin: 0, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.18em', color: 'rgba(42,33,24,0.6)' }}>
-        {label}
-      </p>
-      <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-display, serif)', fontStyle: 'italic', fontSize: 24 }}>
-        {value}
-      </p>
-    </div>
-  )
-}
-
-const cardStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.85)',
-  borderRadius: 18,
-  padding: 28,
-  marginBottom: 20,
-  boxShadow: '0 12px 36px rgba(42,33,24,0.06)',
-}
-
-const h2Style: React.CSSProperties = {
-  fontFamily: 'var(--font-display, serif)',
-  fontStyle: 'italic',
-  fontSize: 28,
-  margin: '0 0 16px',
-}

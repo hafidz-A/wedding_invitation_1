@@ -33,6 +33,13 @@ export const pageConfig = {
     description: 'Cinematic wedding invitation experience',
   },
 
+  // WhatsApp invite message template — used by the Guests tab to render
+  // `wa.me` links. Placeholders: {{name}}, {{url}}. Each couple can edit
+  // this from the dashboard editor; this is the default for new accounts.
+  inviteMessageTemplate:
+    'Halo {{name}},\n\nDengan hormat kami mengundang Anda untuk hadir di acara pernikahan kami. ' +
+    'Detail lengkap & RSVP di tautan berikut:\n\n{{url}}\n\nTerima kasih 🙏',
+
   sections: [
     {
       id: 'hero',
@@ -79,6 +86,12 @@ export const pageConfig = {
         messageAfter: 'Terima kasih telah menjadi bagian dari kisah kami.',
         labels: { days: 'Hari', hours: 'Jam', minutes: 'Menit', seconds: 'Detik' },
         style: 'card',
+        calendarEnabled: true,
+        calendarLabel: 'Tambah ke Kalender',
+        calendarTitle: 'Pernikahan Rizky & Amara',
+        calendarLocation: 'The Grand Ballroom, Jakarta',
+        calendarDescription: 'Akad nikah & resepsi. Mohon kehadirannya.',
+        calendarDurationHours: 4,
       },
     },
 

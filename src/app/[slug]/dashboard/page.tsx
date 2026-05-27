@@ -2,6 +2,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import LoginForm from './LoginForm'
 import DashboardClient from './DashboardClient'
+import { fromDbRow } from './guests/actions'
 
 interface PageProps {
   params: { slug: string }
@@ -67,24 +68,36 @@ export default async function DashboardPage({ params }: PageProps) {
     )
   }
 
-  // 4. Fetch RSVPs + gifts + notes in parallel.
-  const [{ data: rsvps }, { data: gifts }, { data: notes }] = await Promise.all([
-    admin
-      .from('rsvps')
-      .select('*')
-      .eq('invitation_id', invitation.id)
-      .order('created_at', { ascending: false }),
-    admin
-      .from('gift_confirmations')
-      .select('*')
-      .eq('invitation_id', invitation.id)
-      .order('created_at', { ascending: false }),
-    admin
-      .from('guestbook_notes')
-      .select('id, guest_name, message, color, created_at')
-      .eq('invitation_id', invitation.id)
-      .order('created_at', { ascending: false }),
-  ])
+  // 4. Fetch RSVPs + gifts + notes + guests in parallel.
+  const [{ data: rsvps }, { data: gifts }, { data: notes }, { data: guestsRaw }] =
+    await Promise.all([
+      admin
+        .from('rsvps')
+        .select('*')
+        .eq('invitation_id', invitation.id)
+        .order('created_at', { ascending: false }),
+      admin
+        .from('gift_confirmations')
+        .select('*')
+        .eq('invitation_id', invitation.id)
+        .order('created_at', { ascending: false }),
+      admin
+        .from('guestbook_notes')
+        .select('id, guest_name, message, color, created_at')
+        .eq('invitation_id', invitation.id)
+        .order('created_at', { ascending: false }),
+      admin
+        .from('guests')
+        .select('*')
+        .eq('invitation_id', invitation.id)
+        .order('created_at', { ascending: true }),
+    ])
+
+  // Decrypt guests rows server-side — the client never sees ciphertext.
+  // If the guests table doesn't exist yet (migration not applied), guestsRaw
+  // will be null and we just render an empty list — Tab shows the empty
+  // state with the "+ Import" CTA.
+  const guests = (guestsRaw as any[] | null)?.map(fromDbRow) ?? []
 
   return (
     <DashboardClient
@@ -93,6 +106,7 @@ export default async function DashboardPage({ params }: PageProps) {
       rsvps={(rsvps as any) || []}
       gifts={(gifts as any) || []}
       notes={(notes as any) || []}
+      guests={guests}
     />
   )
 }
