@@ -16,6 +16,30 @@
   flex-wrap: wrap;
 }
 
+/* On mobile, stack title row + actions row vertically and let action
+   buttons wrap into their own row. Prevents the slug + Published badge
+   + View live + Logout crammed onto one line at 320px. */
+@media (max-width: 767.98px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .headerActions {
+    justify-content: flex-start;
+  }
+  .nav {
+    padding: 0 16px;
+  }
+  .nav button {
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+  }
+  .content {
+    padding: 14px;
+  }
+}
+
 .headerLeft h1 {
   margin: 0;
   font-family: var(--font-display, serif);

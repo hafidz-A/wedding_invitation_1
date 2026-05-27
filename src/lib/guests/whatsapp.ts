@@ -20,12 +20,17 @@ export interface TemplateVars {
 }
 
 /**
- * renderMessageTemplate — replace `{{name}}` and `{{url}}` placeholders.
- * Unknown placeholders are left in place so a typo doesn't silently swallow
- * part of the message.
+ * renderMessageTemplate — replace placeholders in the couple's message.
+ *
+ * Supported placeholders (English + Indonesian aliases):
+ *   {{name}} / {{nama}}    → guest's display name
+ *   {{url}}  / {{link}}    → public invitation URL
+ *
+ * Unknown placeholders are left in place so a typo doesn't silently
+ * swallow part of the message.
  */
 export function renderMessageTemplate(template: string, vars: TemplateVars): string {
   return template
-    .replace(/\{\{name\}\}/g, vars.name)
-    .replace(/\{\{url\}\}/g, vars.url)
+    .replace(/\{\{\s*(name|nama)\s*\}\}/gi, vars.name)
+    .replace(/\{\{\s*(url|link)\s*\}\}/gi, vars.url)
 }

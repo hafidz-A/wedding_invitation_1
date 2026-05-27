@@ -28,6 +28,18 @@ describe('renderMessageTemplate', () => {
     expect(renderMessageTemplate('Buka {{url}}', { name: '', url: 'https://w.id/agus' }))
       .toBe('Buka https://w.id/agus')
   })
+  it('accepts Indonesian alias {{nama}}', () => {
+    expect(renderMessageTemplate('Halo {{nama}}', { name: 'Agus', url: '' }))
+      .toBe('Halo Agus')
+  })
+  it('accepts Indonesian alias {{link}}', () => {
+    expect(renderMessageTemplate('Klik {{link}}', { name: '', url: 'https://w.id/x' }))
+      .toBe('Klik https://w.id/x')
+  })
+  it('tolerates whitespace inside braces', () => {
+    expect(renderMessageTemplate('Halo {{ nama }}', { name: 'Agus', url: '' }))
+      .toBe('Halo Agus')
+  })
   it('leaves unknown placeholders intact', () => {
     expect(renderMessageTemplate('Halo {{nickname}}', { name: 'A', url: '' }))
       .toBe('Halo {{nickname}}')

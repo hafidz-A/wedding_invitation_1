@@ -88,12 +88,20 @@ export default function GuestEditModal({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={5}
-            placeholder="Isi pesan khusus untuk tamu ini. Gunakan {{name}} dan {{url}} sebagai placeholder."
+            placeholder="
+
+            Halo {{nama}}, 
+            Dengan hormat kami mengundang Anda untuk hadir di acara pernikahan kami. Detail lengkap & RSVP di tautan berikut:
+            {{https://wedding-invitation-1-ryle.vercel.app/(nama-pasangan)}}
+            
+            Terima kasih 
+            "
             style={{ ...input, fontFamily: 'inherit', resize: 'vertical', minHeight: 100 }}
           />
           <span style={hint}>
             Kalau diisi, pesan ini menggantikan pesan default untuk tamu ini saja.
-            Tersedia placeholder: <code>{'{{name}}'}</code> (nama tamu) dan <code>{'{{url}}'}</code> (link undangan).
+            Tersedia placeholder: <code>{'{{nama}}'}</code> atau <code>{'{{name}}'}</code> (nama tamu) dan{' '}
+            <code>{'{{link}}'}</code> atau <code>{'{{url}}'}</code> (link undangan).
           </span>
         </label>
 

@@ -14,6 +14,7 @@ import {
 import { type GuestRow } from './guests/types'
 import GuestImportModal from './GuestImportModal'
 import GuestEditModal from './GuestEditModal'
+import styles from './GuestsTab.module.css'
 
 const DEFAULT_TEMPLATE =
   'Halo {{name}}, dengan hormat kami mengundang Anda ke acara pernikahan kami. ' +
@@ -136,24 +137,15 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 16, padding: 24 }}>
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 18,
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
-        <div>
-          <h2 style={{ margin: 0, fontSize: 20 }}>Tamu Undangan</h2>
-          <p style={{ margin: '6px 0 0', fontSize: 13, color: '#5C4A3A' }}>
-            {guests.length} tamu · {sentCount} sudah dikirim · {pendingCount} pending
+    <div className={styles.shell}>
+      <header className={styles.header}>
+        <div className={styles.headerTitle}>
+          <h2>Tamu Undangan</h2>
+          <p>
+            {localGuests.length} tamu · {sentCount} sudah dikirim · {pendingCount} pending
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className={styles.headerActions}>
           <button
             type="button"
             onClick={() => setTemplateOpen((o) => !o)}
@@ -172,18 +164,11 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
       </header>
 
       {templateOpen && (
-        <div
-          style={{
-            marginBottom: 18,
-            padding: 16,
-            background: 'rgba(232,85,62,0.06)',
-            border: '1px solid rgba(232,85,62,0.18)',
-            borderRadius: 12,
-          }}
-        >
-          <p style={{ margin: '0 0 10px', fontSize: 13, color: '#5C4A3A', lineHeight: 1.6 }}>
+        <div className={styles.templatePanel}>
+          <p className={styles.templateHint}>
             Pesan default ini dipakai untuk <b>semua tamu</b> kecuali tamu yang punya pesan custom sendiri (di-edit per baris).
-            Tersedia placeholder: <code>{'{{name}}'}</code> (nama tamu) dan <code>{'{{url}}'}</code> (link undangan).
+            Tersedia placeholder: <code>{'{{nama}}'}</code> atau <code>{'{{name}}'}</code> (nama tamu) dan{' '}
+            <code>{'{{link}}'}</code> atau <code>{'{{url}}'}</code> (link undangan).
           </p>
           <textarea
             value={template}
@@ -198,7 +183,7 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
               minHeight: 100,
             }}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginTop: 10 }}>
+          <div className={styles.templateActions}>
             {templateError && (
               <span style={{ fontSize: 13, color: '#E8553E', marginRight: 'auto' }}>{templateError}</span>
             )}
@@ -220,27 +205,20 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
         </div>
       )}
 
-      <form
-        action={handleAdd}
-        style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}
-      >
-        <input name="name" placeholder="Nama tamu" required style={{ ...input, flex: '1 1 200px' }} />
-        <input
-          name="phone"
-          placeholder="08123456789 (opsional)"
-          style={{ ...input, flex: '1 1 180px' }}
-        />
+      <form action={handleAdd} className={styles.addForm}>
+        <input name="name" placeholder="Nama tamu" required style={input} />
+        <input name="phone" placeholder="08123456789 (opsional)" style={input} />
         <button type="submit" disabled={pending} style={primaryBtn}>
           Tambah
         </button>
       </form>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+      <div className={styles.filterRow}>
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Cari nama, nomor, grup…"
-          style={{ ...input, flex: 1, minWidth: 200 }}
+          style={input}
         />
         {(['all', 'pending', 'sent'] as const).map((f) => (
           <button
@@ -258,14 +236,14 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
         ))}
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
           <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(42,33,24,0.08)' }}>
-              <th style={th}>Nama</th>
-              <th style={th}>Nomor</th>
-              <th style={th}>Status</th>
-              <th style={{ ...th, textAlign: 'right' }}>Aksi</th>
+            <tr>
+              <th>Nama</th>
+              <th>Nomor</th>
+              <th>Status</th>
+              <th style={{ textAlign: 'right' }}>Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -277,17 +255,17 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
               </tr>
             )}
             {filtered.map((g) => (
-              <tr key={g.id} style={{ borderBottom: '1px solid rgba(42,33,24,0.04)' }}>
-                <td style={td}>
+              <tr key={g.id}>
+                <td data-label="Nama">
                   {g.name}
                   {g.group_label && <span style={badge}>{g.group_label}</span>}
                 </td>
-                <td style={td}>
+                <td data-label="Nomor">
                   {formatPhoneDisplay(g.phone_e164) || (
                     <span style={{ color: '#aaa' }}>—</span>
                   )}
                 </td>
-                <td style={td}>
+                <td data-label="Status">
                   {g.sent_at ? (
                     <span
                       style={{
@@ -338,7 +316,7 @@ export default function GuestsTab({ slug, guests, publicUrl, messageTemplate }: 
                     </span>
                   )}
                 </td>
-                <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <td className={styles.actionsCell}>
                   <button
                     type="button"
                     onClick={() => handleSend(g)}
@@ -454,15 +432,6 @@ const ghostBtn: React.CSSProperties = {
   cursor: 'pointer',
   fontSize: 13,
 }
-const th: React.CSSProperties = {
-  padding: '10px 8px',
-  fontWeight: 600,
-  fontSize: 12,
-  textTransform: 'uppercase',
-  letterSpacing: '0.08em',
-  color: '#5C4A3A',
-}
-const td: React.CSSProperties = { padding: '12px 8px', verticalAlign: 'middle' }
 const badge: React.CSSProperties = {
   display: 'inline-block',
   marginLeft: 8,
